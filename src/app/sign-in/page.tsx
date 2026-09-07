@@ -39,13 +39,12 @@ export default async function SignInPage() {
         className="object-cover object-[65%_center] sm:object-[center_center]"
       />
 
-      {/* Restrained, localized readability washes — not one heavy dark
-          layer. A soft light wash sits behind the central branding
-          column (which spans the brighter sky/course band), and only
-          the lower band (grass) gets a subtle dark gradient so
-          "More Than a Round" stays legible. */}
-      <div className="absolute inset-0 bg-radial-[at_50%_30%] from-white/35 via-white/10 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-emerald-950/60 to-transparent" />
+      {/* Cinematic, localized contrast vignette — NOT a flat dark
+          overlay. The bright sky/upper-branding band stays essentially
+          untouched; a subtle darkening gradually builds through the
+          course/auth band so the light auth text stays readable, and
+          strengthens slightly at the very bottom for the tagline. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent from-35% via-emerald-950/25 via-70% to-emerald-950/60" />
 
       <div className="relative flex min-h-full flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+2.25rem)] pb-8 sm:pt-16">
         <div className="w-full max-w-[640px]">

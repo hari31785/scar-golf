@@ -75,7 +75,7 @@ export function SignInFlow() {
         Golf · Friends · Competition
       </p>
 
-      <p className="mt-7 text-base leading-relaxed font-medium text-neutral-900 drop-shadow-[0_1px_3px_rgba(255,255,255,0.65)] sm:text-lg">
+      <p className="mt-7 text-base leading-relaxed font-medium text-amber-50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-lg">
         Sign in with your passkey to access
         <br />
         your SCAR membership.
@@ -86,30 +86,30 @@ export function SignInFlow() {
           type="button"
           onClick={handlePasskeySignIn}
           disabled={isSigningIn}
-          className="h-16 w-full justify-between rounded-2xl bg-emerald-900 px-6 text-base font-bold text-emerald-50 shadow-xl shadow-emerald-950/30 hover:bg-emerald-800"
+          className="h-16 w-full justify-between rounded-2xl bg-emerald-900 px-6 text-base font-bold text-amber-50 shadow-xl shadow-emerald-950/30 hover:bg-emerald-800"
         >
           <span className="flex items-center gap-3">
-            <Fingerprint className="size-5" />
+            <Fingerprint className="size-5 text-amber-50" />
             {isSigningIn ? "Waiting for passkey…" : "Sign in with Passkey"}
           </span>
-          <ArrowRight className="size-5" />
+          <ArrowRight className="size-5 text-amber-50" />
         </Button>
 
         {error ? (
-          <p className="text-center text-sm font-medium text-destructive">
+          <p className="text-center text-sm font-medium text-rose-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]">
             {error}
           </p>
         ) : null}
 
-        <div className="mt-1 flex items-center gap-3 text-neutral-700/60">
-          <span className="h-px flex-1 bg-neutral-700/40" />
-          <span className="text-xs font-bold tracking-[0.2em] text-neutral-900 uppercase drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+        <div className="mt-1 flex items-center gap-3">
+          <span className="h-px flex-1 bg-amber-50/40" />
+          <span className="text-xs font-semibold tracking-[0.2em] text-amber-50 uppercase drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
             New to SCAR?
           </span>
-          <span className="h-px flex-1 bg-neutral-700/40" />
+          <span className="h-px flex-1 bg-amber-50/40" />
         </div>
 
-        <p className="text-center text-sm leading-relaxed font-medium text-neutral-900 drop-shadow-[0_1px_3px_rgba(255,255,255,0.6)]">
+        <p className="text-center text-sm leading-relaxed font-medium text-amber-50/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
           Members receive a one-time enrollment link
           <br />
           from an admin to set up their passkey.
@@ -117,7 +117,7 @@ export function SignInFlow() {
       </div>
 
       <p
-        className="mt-12 text-xl text-white italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)] sm:mt-16"
+        className="mt-12 text-xl text-white italic drop-shadow-[0_2px_5px_rgba(0,0,0,0.65)] sm:mt-16"
         style={{ fontFamily: "var(--font-scar-display)" }}
       >
         More Than a Round
