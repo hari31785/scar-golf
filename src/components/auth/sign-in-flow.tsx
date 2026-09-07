@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Fingerprint, ShieldCheck } from "lucide-react";
+import { Fingerprint, ArrowRight, Palmtree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
@@ -52,42 +52,77 @@ export function SignInFlow() {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 flex flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-900 text-emerald-300 shadow-lg shadow-emerald-950/30">
-          <ShieldCheck className="size-7" />
-        </div>
-        <p className="mt-4 text-[0.65rem] font-semibold tracking-[0.25em] text-emerald-800 uppercase">
-          SCAR Championship
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-          Member Sign In
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in with the passkey linked to your SCAR membership.
-        </p>
-      </div>
+    <div className="flex flex-col items-center text-center">
+      <Palmtree
+        className="size-7 text-emerald-950 drop-shadow-[0_1px_2px_rgba(255,255,255,0.5)]"
+        strokeWidth={1.75}
+      />
 
-      <div className="flex flex-col gap-4">
+      <p className="mt-3 text-sm font-bold tracking-[0.35em] text-emerald-950 uppercase drop-shadow-[0_1px_3px_rgba(255,255,255,0.6)]">
+        SCAR Championship
+      </p>
+      <p className="mt-1 text-xs font-semibold tracking-[0.25em] text-emerald-900 uppercase drop-shadow-[0_1px_2px_rgba(255,255,255,0.5)]">
+        South Carolina Amateur Round
+      </p>
+
+      <h1
+        className="mt-5 text-[5rem] leading-[0.92] font-extrabold tracking-tight text-emerald-950 drop-shadow-[0_2px_6px_rgba(255,255,255,0.55)] sm:text-[7rem]"
+        style={{ fontFamily: "var(--font-scar-display)" }}
+      >
+        SCAR
+      </h1>
+      <p className="mt-3 text-base font-bold tracking-[0.3em] text-emerald-950 uppercase drop-shadow-[0_1px_3px_rgba(255,255,255,0.6)] sm:text-lg">
+        Golf · Friends · Competition
+      </p>
+
+      <p className="mt-7 text-base leading-relaxed font-medium text-neutral-900 drop-shadow-[0_1px_3px_rgba(255,255,255,0.65)] sm:text-lg">
+        Sign in with your passkey to access
+        <br />
+        your SCAR membership.
+      </p>
+
+      <div className="mt-6 flex w-full max-w-sm flex-col gap-4">
         <Button
           type="button"
           onClick={handlePasskeySignIn}
           disabled={isSigningIn}
-          className="h-12 w-full rounded-xl bg-emerald-900 text-base font-semibold text-emerald-50 hover:bg-emerald-800"
+          className="h-16 w-full justify-between rounded-2xl bg-emerald-900 px-6 text-base font-bold text-emerald-50 shadow-xl shadow-emerald-950/30 hover:bg-emerald-800"
         >
-          <Fingerprint className="size-5" />
-          {isSigningIn ? "Waiting for passkey…" : "Sign in with Passkey"}
+          <span className="flex items-center gap-3">
+            <Fingerprint className="size-5" />
+            {isSigningIn ? "Waiting for passkey…" : "Sign in with Passkey"}
+          </span>
+          <ArrowRight className="size-5" />
         </Button>
 
         {error ? (
-          <p className="text-center text-sm text-destructive">{error}</p>
+          <p className="text-center text-sm font-medium text-destructive">
+            {error}
+          </p>
         ) : null}
 
-        <p className="text-center text-xs text-muted-foreground">
-          New members receive a one-time enrollment link from an admin to
-          set up their passkey.
+        <div className="mt-1 flex items-center gap-3 text-neutral-700/60">
+          <span className="h-px flex-1 bg-neutral-700/40" />
+          <span className="text-xs font-bold tracking-[0.2em] text-neutral-900 uppercase drop-shadow-[0_1px_2px_rgba(255,255,255,0.6)]">
+            New to SCAR?
+          </span>
+          <span className="h-px flex-1 bg-neutral-700/40" />
+        </div>
+
+        <p className="text-center text-sm leading-relaxed font-medium text-neutral-900 drop-shadow-[0_1px_3px_rgba(255,255,255,0.6)]">
+          Members receive a one-time enrollment link
+          <br />
+          from an admin to set up their passkey.
         </p>
       </div>
+
+      <p
+        className="mt-12 text-xl text-white italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.55)] sm:mt-16"
+        style={{ fontFamily: "var(--font-scar-display)" }}
+      >
+        More Than a Round
+      </p>
+      <span className="mt-2 h-px w-10 bg-white/80" />
     </div>
   );
 }

@@ -128,3 +128,26 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  /* Subtle golf-ball dimple texture — used on dark hero/header surfaces */
+  .bg-golf-dimples {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(255, 255, 255, 0.16) 1px,
+      transparent 0
+    );
+    background-size: 14px 14px;
+  }
+
+  /* Faint mown-fairway stripe texture — used on green card surfaces */
+  .bg-fairway-stripes {
+    background-image: repeating-linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 22px,
+      transparent 22px,
+      transparent 44px
+    );
+  }
+}

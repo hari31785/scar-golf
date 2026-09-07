@@ -12,8 +12,8 @@ export function StatCard({
   icon: LucideIcon;
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-2 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-      <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-800">
+    <div className="flex flex-1 flex-col gap-2 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 transition-shadow hover:shadow-md">
+      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-emerald-50 shadow-sm">
         <Icon className="size-4" />
       </div>
       <div>

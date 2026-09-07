@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Palmtree } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 
@@ -13,33 +13,46 @@ export function AppHeader({
   isAdmin?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-emerald-900/10 bg-emerald-950 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 text-white">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[0.65rem] font-semibold tracking-[0.2em] text-emerald-300 uppercase">
+    <header className="relative sticky top-0 z-20 overflow-hidden border-b border-emerald-900/10 bg-gradient-to-br from-emerald-900 via-emerald-950 to-black px-5 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 text-white lg:px-8">
+      <div className="bg-golf-dimples pointer-events-none absolute inset-0 opacity-40" />
+      <div className="relative mx-auto flex w-full max-w-[1200px] items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Palmtree className="size-5 shrink-0 text-emerald-300" strokeWidth={1.5} />
+          <p className="text-xs font-semibold tracking-[0.2em] text-white/90 uppercase">
             SCAR Championship
           </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight">
-            Good morning, {greetingName}
-          </h1>
-          <div className="mt-1 flex items-center gap-3">
-            <SignOutButton />
-            {isAdmin ? (
-              <Link
-                href="/admin/members"
-                className="flex items-center gap-1 text-xs font-medium text-emerald-300 hover:text-emerald-200"
-              >
-                <ShieldCheck className="size-3.5" />
-                Admin
-              </Link>
-            ) : null}
-          </div>
         </div>
-        <Avatar size="lg" className="ring-2 ring-emerald-400/40">
-          <AvatarFallback className="bg-emerald-800 font-semibold text-emerald-50">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
+
+        <div className="flex items-center gap-2.5">
+          <div className="text-right">
+            <p
+              className="text-xs leading-tight font-medium text-white/70"
+              style={{ fontFamily: "var(--font-scar-display)" }}
+            >
+              Good morning, {greetingName}
+            </p>
+            <div className="mt-1 flex items-center justify-end gap-2.5">
+              {isAdmin ? (
+                <Link
+                  href="/admin/members"
+                  className="flex items-center gap-1 text-[0.7rem] font-medium text-white/50 hover:text-emerald-300"
+                >
+                  <ShieldCheck className="size-3" />
+                  Admin
+                </Link>
+              ) : null}
+              <SignOutButton />
+            </div>
+          </div>
+          <Avatar
+            size="sm"
+            className="ring-1 ring-white/20 ring-offset-2 ring-offset-emerald-950"
+          >
+            <AvatarFallback className="bg-white/90 text-xs font-semibold text-emerald-900">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </div>
       </div>
     </header>
   );

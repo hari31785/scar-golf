@@ -1,6 +1,6 @@
 import "server-only";
 
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   championships,
@@ -26,6 +26,27 @@ export type HistoryChampionshipSummary = {
    */
   locationSummary: string | null;
 };
+
+/**
+ * Counts the distinct championships a member has been an ACTIVE
+ * participant in (any status — past or current). Reuses
+ * `championshipPlayers` directly; a simple existing-schema read, not a
+ * new historical subsystem.
+ */
+export async function getChampionshipsPlayedCountForMember(
+  memberId: string
+): Promise<number> {
+  const rows = await db
+    .select({ championshipId: championshipPlayers.championshipId })
+    .from(championshipPlayers)
+    .where(
+      and(
+        eq(championshipPlayers.memberId, memberId),
+        eq(championshipPlayers.participantStatus, "ACTIVE")
+      )
+    );
+  return new Set(rows.map((r) => r.championshipId)).size;
+}
 
 /**
  * Lists all COMPLETED championships, newest year first. Read-only —
