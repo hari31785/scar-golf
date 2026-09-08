@@ -11,7 +11,7 @@ const actions = [
   {
     label: "Members",
     description: "See the field",
-    href: "/pairings",
+    href: "/members",
     icon: Users,
   },
   {

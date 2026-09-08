@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
-import type { AdminChampionshipSummary, AdminChampionshipMemberRow } from "@/lib/admin/championship-data";
+import type { AdminChampionshipSummary, AdminChampionshipMemberRow, AdminParticipantStatusRow } from "@/lib/admin/championship-data";
 import type { RoundSetupSummary } from "@/lib/admin/round-setup-data";
 import type { ChampionshipRoundPairings } from "@/lib/tournament/pairing-summary";
 import { CreateChampionshipForm } from "@/components/admin/create-championship-form";
 import { ChampionshipSummaryCard } from "@/components/admin/championship-summary-card";
 import { ChampionshipParticipantRow } from "@/components/admin/championship-participant-row";
+import { ParticipantStatusRow } from "@/components/admin/participant-status-row";
 import { RoundSetupSection } from "@/components/admin/round-setup-section";
 import { StartChampionshipSection } from "@/components/admin/start-championship-section";
 import { PairingsSection } from "@/components/admin/pairings-section";
@@ -26,6 +27,7 @@ export function AdminChampionshipView({
   tiedPlayers = [],
   playoffSession = { state: "none" },
   maxHandicap,
+  participantStatuses = [],
 }: {
   year: number;
   championship: AdminChampionshipSummary | null;
@@ -36,6 +38,7 @@ export function AdminChampionshipView({
   tiedPlayers?: TiedPlayerRow[];
   playoffSession?: PlayoffSessionState;
   maxHandicap: number;
+  participantStatuses?: AdminParticipantStatusRow[];
 }) {
   const isDraft = championship?.status === "DRAFT";
 
@@ -46,11 +49,11 @@ export function AdminChampionshipView({
     <div className="flex min-h-full flex-1 flex-col bg-muted/30">
       <header className="sticky top-0 z-20 border-b border-emerald-900/10 bg-emerald-950 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 text-white">
         <Link
-          href="/"
+          href="/admin"
           className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-300 hover:text-emerald-200"
         >
           <ArrowLeft className="size-3.5" />
-          Dashboard
+          Admin Control Center
         </Link>
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-900 text-emerald-300">
@@ -90,6 +93,22 @@ export function AdminChampionshipView({
 
             {(championship.status === "ACTIVE" || championship.status === "COMPLETED") && (
               <ScoreCorrectionsSection rounds={pairingRounds} />
+            )}
+
+            {!isDraft && participantStatuses.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <h2 className="px-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Participant Status
+                </h2>
+                <div className="flex flex-col gap-2">
+                  {participantStatuses.map((participant) => (
+                    <ParticipantStatusRow
+                      key={participant.championshipPlayerId}
+                      participant={participant}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
 
             {!isDraft && (

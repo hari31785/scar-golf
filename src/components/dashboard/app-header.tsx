@@ -34,7 +34,7 @@ export function AppHeader({
             <div className="mt-1 flex items-center justify-end gap-2.5">
               {isAdmin ? (
                 <Link
-                  href="/admin/members"
+                  href="/admin"
                   className="flex items-center gap-1 text-[0.7rem] font-medium text-white/50 hover:text-emerald-300"
                 >
                   <ShieldCheck className="size-3" />

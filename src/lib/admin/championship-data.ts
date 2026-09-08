@@ -24,6 +24,12 @@ export type AdminChampionshipMemberRow = {
   isAdded: boolean;
 };
 
+export type AdminParticipantStatusRow = {
+  championshipPlayerId: string;
+  displayName: string;
+  participantStatus: "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED";
+};
+
 /**
  * Finds the current non-cancelled championship for a given year, if
  * one exists, along with its participant count. Read-only — never
@@ -90,4 +96,30 @@ export async function listActiveMembersForChampionship(
     membershipType: m.membershipType,
     isAdded: addedMemberIds.has(m.id),
   }));
+}
+
+/**
+ * Participant status rows for an ACTIVE (or COMPLETED) championship,
+ * for the admin's minimal ACTIVE/WITHDRAWN/DISQUALIFIED controls. Purely
+ * a read composition — does not enforce any status-transition rules
+ * (see setParticipantStatusAction / championshipPlayers schema doc for
+ * the invariants those existing rules already guarantee: withdrawn/DQ
+ * players never block round completion and are excluded from future
+ * pairing generation).
+ */
+export async function listParticipantStatuses(
+  championshipId: string
+): Promise<AdminParticipantStatusRow[]> {
+  const rows = await db
+    .select({
+      championshipPlayerId: championshipPlayers.id,
+      participantStatus: championshipPlayers.participantStatus,
+      displayName: members.displayName,
+    })
+    .from(championshipPlayers)
+    .innerJoin(members, eq(members.id, championshipPlayers.memberId))
+    .where(eq(championshipPlayers.championshipId, championshipId))
+    .orderBy(members.displayName);
+
+  return rows;
 }

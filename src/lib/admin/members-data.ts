@@ -10,9 +10,11 @@ import { and, isNull, gt } from "drizzle-orm";
 export type AdminMemberRow = {
   id: string;
   displayName: string;
+  email: string;
   membershipType: "PERMANENT" | "ASSOCIATE";
   appRole: "PLAYER" | "ADMIN";
   status: "ACTIVE" | "INACTIVE";
+  isOwner: boolean;
   passkeyCount: number;
   outstandingInvite: { id: string; expiresAt: string } | null;
 };
@@ -74,9 +76,11 @@ export async function listAdminMembers(): Promise<AdminMemberRow[]> {
     return {
       id: member.id,
       displayName: member.displayName,
+      email: member.email,
       membershipType: member.membershipType,
       appRole: member.appRole,
       status: member.status,
+      isOwner: member.isOwner,
       passkeyCount: member.authUserId
         ? (countByAuthUserId.get(member.authUserId) ?? 0)
         : 0,

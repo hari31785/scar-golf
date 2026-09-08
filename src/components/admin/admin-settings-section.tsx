@@ -28,7 +28,7 @@ export function AdminSettingsSection({ initialMaxHandicap }: { initialMaxHandica
   }
 
   return (
-    <section className="flex flex-col gap-2">
+    <section id="settings" className="flex flex-col gap-2 scroll-mt-24">
       <h2 className="px-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         Settings
       </h2>

@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Loader2, MoreVertical } from "lucide-react";
+import { KeyRound, Loader2, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { AdminMemberRow } from "@/lib/admin/members-data";
 import { createInviteAction, revokeInviteAction } from "@/lib/admin/actions";
+import {
+  updateMembershipTypeAction,
+  updateAppRoleAction,
+  setMemberStatusAction,
+  updateEmailAction,
+} from "@/lib/admin/members-actions";
 import type { InviteResult } from "@/components/admin/invite-result";
 
 function membershipLabel(type: AdminMemberRow["membershipType"]) {
@@ -35,9 +42,69 @@ export function MemberRow({
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
+  const [isSavingType, setIsSavingType] = useState(false);
+  const [isSavingRole, setIsSavingRole] = useState(false);
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [emailValue, setEmailValue] = useState(member.email);
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isActive = member.status === "ACTIVE";
+
+  async function handleToggleMembershipType() {
+    setError(null);
+    setIsSavingType(true);
+    try {
+      const next = member.membershipType === "PERMANENT" ? "ASSOCIATE" : "PERMANENT";
+      const result = await updateMembershipTypeAction({
+        memberId: member.id,
+        membershipType: next,
+      });
+      if (!result.ok) setError(result.error);
+    } finally {
+      setIsSavingType(false);
+    }
+  }
+
+  async function handleToggleAppRole() {
+    setError(null);
+    setIsSavingRole(true);
+    try {
+      const next = member.appRole === "ADMIN" ? "PLAYER" : "ADMIN";
+      const result = await updateAppRoleAction({ memberId: member.id, appRole: next });
+      if (!result.ok) setError(result.error);
+    } finally {
+      setIsSavingRole(false);
+    }
+  }
+
+  async function handleToggleStatus() {
+    setError(null);
+    setIsSavingStatus(true);
+    try {
+      const next = isActive ? "INACTIVE" : "ACTIVE";
+      const result = await setMemberStatusAction({ memberId: member.id, status: next });
+      if (!result.ok) setError(result.error);
+    } finally {
+      setIsSavingStatus(false);
+    }
+  }
+
+  async function handleSaveEmail() {
+    setError(null);
+    setIsSavingEmail(true);
+    try {
+      const result = await updateEmailAction({ memberId: member.id, email: emailValue });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setIsEditingEmail(false);
+    } finally {
+      setIsSavingEmail(false);
+    }
+  }
 
   async function handleCreateInvite() {
     setError(null);
@@ -76,8 +143,11 @@ export function MemberRow({
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-foreground">
+          <p className="flex items-center gap-1.5 truncate font-semibold text-foreground">
             {member.displayName}
+            {member.isOwner ? (
+              <Crown className="size-3.5 shrink-0 text-amber-500" aria-label="Owner" />
+            ) : null}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Badge variant="outline">{membershipLabel(member.membershipType)}</Badge>
@@ -92,14 +162,93 @@ export function MemberRow({
             <KeyRound className="size-3.5" />
             {passkeyStatusLabel(member.passkeyCount)}
           </p>
-        </div>
 
-        <MoreVertical className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" />
+          {isEditingEmail ? (
+            <div className="mt-2 flex items-center gap-1.5">
+              <Input
+                type="email"
+                value={emailValue}
+                onChange={(e) => setEmailValue(e.target.value)}
+                className="h-8 text-xs"
+                disabled={isSavingEmail}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={isSavingEmail}
+                onClick={handleSaveEmail}
+                className="h-8 shrink-0 rounded-lg px-2 text-xs"
+              >
+                {isSavingEmail ? "…" : "Save"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isSavingEmail}
+                onClick={() => {
+                  setEmailValue(member.email);
+                  setIsEditingEmail(false);
+                }}
+                className="h-8 shrink-0 rounded-lg px-2 text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditingEmail(true)}
+              className="mt-2 truncate text-left text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground"
+            >
+              {member.email}
+            </button>
+          )}
+        </div>
       </div>
 
       {error ? (
         <p className="mt-3 text-xs text-destructive">{error}</p>
       ) : null}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isSavingType}
+          onClick={handleToggleMembershipType}
+          className="h-8 rounded-lg px-3 text-xs"
+        >
+          {isSavingType
+            ? "…"
+            : `Make ${member.membershipType === "PERMANENT" ? "Associate" : "Permanent"}`}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isSavingRole || member.isOwner}
+          onClick={handleToggleAppRole}
+          title={member.isOwner ? "The owner must remain an Admin." : undefined}
+          className="h-8 rounded-lg px-3 text-xs"
+        >
+          {isSavingRole ? "…" : `Make ${member.appRole === "ADMIN" ? "Player" : "Admin"}`}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isSavingStatus || member.isOwner}
+          onClick={handleToggleStatus}
+          title={member.isOwner ? "The owner cannot be deactivated." : undefined}
+          className="h-8 rounded-lg px-3 text-xs text-destructive hover:bg-destructive/10"
+        >
+          {isSavingStatus ? "…" : isActive ? "Deactivate" : "Activate"}
+        </Button>
+      </div>
 
       <div className="mt-3 flex flex-col gap-2">
         {member.outstandingInvite ? (

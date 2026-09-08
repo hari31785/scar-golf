@@ -1,6 +1,9 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { db } from "@/db";
+import { championshipPlayers } from "@/db/schema/championship-players";
 import { requireAdminMember } from "@/lib/current-member";
 import { createDraftChampionship } from "@/lib/tournament/create";
 import {
@@ -159,6 +162,39 @@ export async function startChampionshipAction(params: {
 }
 
 export type SaveTeeTimesActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Admin-only: sets a participant's status (ACTIVE / WITHDRAWN /
+ * DISQUALIFIED) for an in-progress or completed championship.
+ *
+ * This is a status flip ONLY — it never touches historical scores,
+ * `frozenHandicap`, or round-group assignments. The existing rules that
+ * WITHDRAWN/DISQUALIFIED players never block round completion and are
+ * excluded from future pairing generation already live in the
+ * scoring/pairing services themselves (see
+ * src/lib/tournament/scoring/submit-group.ts and
+ * src/lib/tournament/round2to4-pairing-service.ts) — nothing new is
+ * introduced here.
+ */
+export async function setParticipantStatusAction(params: {
+  championshipPlayerId: string;
+  status: "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED";
+}): Promise<ParticipantActionResult> {
+  try {
+    await requireAdminMember();
+    await db
+      .update(championshipPlayers)
+      .set({ participantStatus: params.status })
+      .where(eq(championshipPlayers.id, params.championshipPlayerId));
+    revalidatePath("/admin/championship");
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not update participant status.",
+    };
+  }
+}
 
 /**
  * Admin-only: batch-saves tee times for already-existing groups within

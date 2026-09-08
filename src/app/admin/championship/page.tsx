@@ -4,6 +4,7 @@ import { getCurrentMember } from "@/lib/current-member";
 import {
   getChampionshipForYear,
   listActiveMembersForChampionship,
+  listParticipantStatuses,
 } from "@/lib/admin/championship-data";
 import { listRoundSetupSummaries } from "@/lib/admin/round-setup-data";
 import { getAllRoundsPairingSummary } from "@/lib/tournament/pairing-summary";
@@ -56,6 +57,11 @@ export default async function AdminChampionshipPage({
 
   const maxHandicap = await getMaxHandicap();
 
+  const participantStatuses =
+    championship && championship.status !== "DRAFT"
+      ? await listParticipantStatuses(championship.id)
+      : [];
+
   return (
     <AdminChampionshipView
       year={selectedYear}
@@ -67,6 +73,7 @@ export default async function AdminChampionshipPage({
       tiedPlayers={tiedPlayers}
       playoffSession={existingPlayoff}
       maxHandicap={maxHandicap}
+      participantStatuses={participantStatuses}
     />
   );
 }
