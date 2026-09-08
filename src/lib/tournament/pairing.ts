@@ -111,3 +111,20 @@ export function generateNetStandingsPairing(
     sizes
   );
 }
+
+/**
+ * Splits one group's players into cart numbers, 2 players per cart
+ * (in the group's existing order — same order used for `position`).
+ * A trailing odd player alone gets their own cart rather than being
+ * merged into another cart. Pure/no I/O — cart number is 1-based
+ * WITHIN the group (cart 1, cart 2, ...), not globally unique across
+ * groups, exactly like `position`.
+ *
+ * Never used for scoring/handicap/pairing-eligibility — carts are a
+ * logistics-only concept layered on top of the existing group/position
+ * assignment.
+ */
+export function assignCarts(groupPlayerIds: string[]): number[] {
+  return groupPlayerIds.map((_, index) => Math.floor(index / 2) + 1);
+}
+

@@ -60,40 +60,54 @@ export type MemberDirectoryRow = {
   displayName: string;
   membershipType: "PERMANENT" | "ASSOCIATE";
   appRole: "PLAYER" | "ADMIN";
-  finalHandicap: number;
+  status: "ACTIVE" | "INACTIVE";
+  /** Null for INACTIVE members — never calculated/shown for them. */
+  finalHandicap: number | null;
 };
 
 /**
  * Read-only member directory for the user-facing /members page. Lists
- * every ACTIVE member (regardless of whether they have an
- * authUserId/passkey yet), sorted by name. Handicap comes from the
+ * every member regardless of status (ACTIVE members first, then
+ * INACTIVE), sorted by name within each group. Handicap comes from the
  * same existing `calculateHandicapForMember()` engine used by
- * /handicaps — never recomputed here.
+ * /handicaps — never recomputed here, and is never calculated/shown
+ * for INACTIVE members (presentation-only rule, no data invented).
  */
 export async function listMemberDirectory(): Promise<MemberDirectoryRow[]> {
-  const activeMembers = await db
+  const allMembers = await db
     .select({
       id: members.id,
       displayName: members.displayName,
       membershipType: members.membershipType,
       appRole: members.appRole,
+      status: members.status,
     })
     .from(members)
-    .where(eq(members.status, "ACTIVE"))
     .orderBy(asc(members.displayName));
 
-  return Promise.all(
-    activeMembers.map(async (member) => {
-      const result = await calculateHandicapForMember(member.id);
+  const rows = await Promise.all(
+    allMembers.map(async (member) => {
+      const finalHandicap =
+        member.status === "ACTIVE"
+          ? (await calculateHandicapForMember(member.id)).finalHandicap
+          : null;
       return {
         memberId: member.id,
         displayName: member.displayName,
         membershipType: member.membershipType,
         appRole: member.appRole,
-        finalHandicap: result.finalHandicap,
+        status: member.status,
+        finalHandicap,
       };
     })
   );
+
+  rows.sort((a, b) => {
+    if (a.status !== b.status) return a.status === "ACTIVE" ? -1 : 1;
+    return a.displayName.localeCompare(b.displayName);
+  });
+
+  return rows;
 }
 
 export type CalculationRoundDisplay = {

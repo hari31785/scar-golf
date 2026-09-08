@@ -10,7 +10,7 @@ import {
   roundGroups,
   scorecardSubmissions,
 } from "@/db/schema";
-import { generateNetStandingsPairing, type NetStandingsParticipant } from "./pairing";
+import { generateNetStandingsPairing, assignCarts, type NetStandingsParticipant } from "./pairing";
 
 export class Round2to4PairingError extends Error {}
 
@@ -217,12 +217,14 @@ export async function generateAndPersistRound2to4Pairing(params: {
 
       groupIds.push(insertedGroup.id);
 
+      const cartNumbers = assignCarts(groupPlayerIds);
       for (const [position, championshipPlayerId] of groupPlayerIds.entries()) {
         await tx.insert(roundGroupPlayers).values({
           roundGroupId: insertedGroup.id,
           championshipRoundId,
           championshipPlayerId,
           position: position + 1,
+          cartNumber: cartNumbers[position],
         });
       }
     }

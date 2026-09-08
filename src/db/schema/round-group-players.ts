@@ -41,6 +41,15 @@ export const roundGroupPlayers = pgTable(
 
     position: integer("position").notNull(),
 
+    // Cart assignment within the group — carts hold up to 2 players
+    // (e.g. a 4-player tee-time group splits into cart 1 + cart 2).
+    // Purely a display/logistics field, exactly like `position` —
+    // never used in any scoring/handicap/pairing-eligibility
+    // calculation. Nullable so existing rows (generated before this
+    // concept existed) remain valid; the pairing service always sets
+    // it for newly generated groups.
+    cartNumber: integer("cart_number"),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

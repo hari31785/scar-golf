@@ -16,6 +16,8 @@ export type PairingPlayerRow = {
   frozenHandicap: number | null;
   membershipType: "PERMANENT" | "ASSOCIATE" | null;
   position: number;
+  /** Null for groups generated before cart assignment existed. */
+  cartNumber: number | null;
 };
 
 export type PairingGroupRow = {
@@ -49,6 +51,7 @@ export async function getRoundPairingSummary(
     .select({
       roundGroupId: roundGroupPlayers.roundGroupId,
       position: roundGroupPlayers.position,
+      cartNumber: roundGroupPlayers.cartNumber,
       championshipPlayerId: championshipPlayers.id,
       memberId: members.id,
       displayName: members.displayName,
@@ -74,6 +77,7 @@ export async function getRoundPairingSummary(
       frozenHandicap: row.frozenHandicap,
       membershipType: row.membershipType,
       position: row.position,
+      cartNumber: row.cartNumber,
     });
     playersByGroupId.set(row.roundGroupId, list);
   }

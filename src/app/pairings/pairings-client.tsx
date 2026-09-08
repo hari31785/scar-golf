@@ -91,47 +91,67 @@ export function PairingsClient({
                           {formatTeeTime(group.teeTime)}
                         </span>
                       </div>
-                      <ul className="mt-2 flex flex-col gap-1">
-                        {group.players
-                          .slice()
-                          .sort((a, b) => a.position - b.position)
-                          .map((player) => (
-                            <li
-                              key={player.championshipPlayerId}
-                              className="flex items-center justify-between text-sm"
+                      <div className="mt-2 flex flex-col gap-2">
+                        {Object.entries(
+                          group.players
+                            .slice()
+                            .sort((a, b) => a.position - b.position)
+                            .reduce<Record<string, typeof group.players>>((acc, p) => {
+                              const key = String(p.cartNumber ?? "—");
+                              (acc[key] ??= []).push(p);
+                              return acc;
+                            }, {})
+                        ).map(([cartNumber, players]) => (
+                          <div key={cartNumber} className="flex flex-col gap-1">
+                            <p
+                              className={cn(
+                                "text-[11px] font-semibold uppercase tracking-wide",
+                                isOwnGroup ? "text-emerald-300" : "text-muted-foreground"
+                              )}
                             >
-                              <span>
-                                {player.position}. {player.displayName}
-                                {player.memberId === currentMemberId && (
+                              Cart {cartNumber}
+                            </p>
+                            <ul className="flex flex-col gap-1">
+                              {players.map((player) => (
+                                <li
+                                  key={player.championshipPlayerId}
+                                  className="flex items-center justify-between text-sm"
+                                >
+                                  <span>
+                                    {player.position}. {player.displayName}
+                                    {player.memberId === currentMemberId && (
+                                      <span
+                                        className={cn(
+                                          "ml-2 text-xs font-normal",
+                                          isOwnGroup ? "text-emerald-200" : "text-emerald-700"
+                                        )}
+                                      >
+                                        You
+                                      </span>
+                                    )}
+                                  </span>
                                   <span
                                     className={cn(
-                                      "ml-2 text-xs font-normal",
-                                      isOwnGroup ? "text-emerald-200" : "text-emerald-700"
+                                      "flex items-center gap-2 text-xs",
+                                      isOwnGroup ? "text-emerald-200" : "text-muted-foreground"
                                     )}
                                   >
-                                    You
+                                    HCP {player.frozenHandicap ?? "—"}
+                                    {membershipLabel(player.membershipType) && (
+                                      <Badge
+                                        variant="outline"
+                                        className={cn(isOwnGroup && "border-emerald-300 text-emerald-100")}
+                                      >
+                                        {membershipLabel(player.membershipType)}
+                                      </Badge>
+                                    )}
                                   </span>
-                                )}
-                              </span>
-                              <span
-                                className={cn(
-                                  "flex items-center gap-2 text-xs",
-                                  isOwnGroup ? "text-emerald-200" : "text-muted-foreground"
-                                )}
-                              >
-                                HCP {player.frozenHandicap ?? "—"}
-                                {membershipLabel(player.membershipType) && (
-                                  <Badge
-                                    variant="outline"
-                                    className={cn(isOwnGroup && "border-emerald-300 text-emerald-100")}
-                                  >
-                                    {membershipLabel(player.membershipType)}
-                                  </Badge>
-                                )}
-                              </span>
-                            </li>
-                          ))}
-                      </ul>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 })

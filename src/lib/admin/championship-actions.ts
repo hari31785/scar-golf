@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { championshipPlayers } from "@/db/schema/championship-players";
 import { requireAdminMember } from "@/lib/current-member";
-import { createDraftChampionship } from "@/lib/tournament/create";
+import {
+  createDraftChampionship,
+  updateDraftChampionshipDetails,
+} from "@/lib/tournament/create";
 import {
   addPlayerToChampionship,
   removePlayerFromChampionship,
@@ -15,6 +18,7 @@ import {
   type CourseSetupInput,
   type HoleSetupInput,
 } from "@/lib/tournament/course-setup";
+import { generateAndPersistRound1Pairing } from "@/lib/tournament/round1-pairing-service";
 import { startChampionshipWithRound1Pairing } from "@/lib/tournament/start-with-round1-pairing";
 import { setRoundGroupTeeTimes, type TeeTimeUpdate } from "@/lib/tournament/tee-times";
 
@@ -55,6 +59,72 @@ export async function createDraftChampionshipAction(params: {
 }
 
 export type ParticipantActionResult = { ok: true } | { ok: false; error: string };
+
+export type GenerateRound1PairingActionResult =
+  | { ok: true; groupIds: string[] }
+  | { ok: false; error: string };
+
+/**
+ * Admin-only: generates Round 1 pairings AHEAD of championship start,
+ * so players/carts can be lined up before the tournament actually
+ * begins. Uses the exact same pairing engine/rules as the
+ * start-time path (see src/lib/tournament/round1-pairing-service.ts) —
+ * it refuses to regenerate if Round 1 already has groups, and
+ * `startChampionshipAction` later simply reuses these same groups
+ * instead of generating new ones.
+ */
+export async function generateRound1PairingAction(params: {
+  championshipRoundId: string;
+}): Promise<GenerateRound1PairingActionResult> {
+  try {
+    const current = await requireAdminMember();
+    const result = await generateAndPersistRound1Pairing({
+      championshipRoundId: params.championshipRoundId,
+      generatedByMemberId: current.member.id,
+    });
+    revalidatePath("/admin/championship");
+    revalidatePath("/pairings");
+    return { ok: true, groupIds: result.groupIds };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not generate Round 1 pairings.",
+    };
+  }
+}
+
+export type UpdateChampionshipDetailsActionResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Admin-only: edits a DRAFT championship's name/start/end date. No
+ * DRAFT-only/date-order validation lives here — see
+ * src/lib/tournament/create.ts's updateDraftChampionshipDetails.
+ */
+export async function updateChampionshipDetailsAction(params: {
+  championshipId: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<UpdateChampionshipDetailsActionResult> {
+  try {
+    await requireAdminMember();
+    await updateDraftChampionshipDetails({
+      championshipId: params.championshipId,
+      name: params.name,
+      startDate: params.startDate ? new Date(params.startDate) : undefined,
+      endDate: params.endDate ? new Date(params.endDate) : undefined,
+    });
+    revalidatePath("/admin/championship");
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not update championship details.",
+    };
+  }
+}
 
 /**
  * Admin-only: adds an ACTIVE member to a DRAFT championship. No

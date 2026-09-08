@@ -1,0 +1,1 @@
+ALTER TABLE "round_group_players" ADD COLUMN "cart_number" integer;

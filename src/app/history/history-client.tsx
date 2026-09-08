@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { Trophy, MapPin, Users, CalendarDays } from "lucide-react";
 import type { HistoryChampionshipSummary } from "@/lib/tournament/history";
+import { formatCalendarDate } from "@/lib/format-date";
 
 function formatDateRange(startDate: string | null, endDate: string | null) {
   if (!startDate && !endDate) return null;
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
+  // Month/day only (no year) for the compact range display — still
+  // timezone-safe via the shared UTC-anchored calendar formatter.
+  const fmt = (iso: string) => formatCalendarDate(iso).replace(/, \d{4}$/, "");
   if (startDate && endDate) return `${fmt(startDate)} – ${fmt(endDate)}`;
   return fmt(startDate ?? endDate!);
 }

@@ -22,11 +22,14 @@ export function MembersClient({ rows }: { rows: MemberDirectoryRow[] }) {
             <div className="mt-0.5 flex items-center gap-1.5">
               <Badge variant="outline">{membershipLabel(row.membershipType)}</Badge>
               {row.appRole === "ADMIN" && <Badge variant="secondary">Admin</Badge>}
+              <Badge variant={row.status === "ACTIVE" ? "secondary" : "outline"}>
+                {row.status === "ACTIVE" ? "Active" : "Inactive"}
+              </Badge>
             </div>
           </div>
           <div className="flex flex-col items-end shrink-0">
             <span className="text-lg font-bold text-emerald-950">
-              {row.finalHandicap}
+              HCP {row.status === "ACTIVE" ? row.finalHandicap : "—"}
             </span>
           </div>
         </div>

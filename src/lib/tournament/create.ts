@@ -82,3 +82,52 @@ export async function createDraftChampionship(
     return { championshipId: inserted.id };
   });
 }
+
+export type UpdateDraftChampionshipDetailsInput = {
+  championshipId: string;
+  name: string;
+  startDate?: Date;
+  endDate?: Date;
+};
+
+/**
+ * Updates a DRAFT championship's name/start/end date only. Rejects the
+ * update entirely if the championship is no longer DRAFT — once a
+ * championship has started, its dates/name are locked, exactly like
+ * every other pre-start-only admin action in this module (see
+ * enrollment.ts, course-setup.ts for the same DRAFT-only pattern).
+ * Never touches status, rounds, or any other field.
+ */
+export async function updateDraftChampionshipDetails(
+  input: UpdateDraftChampionshipDetailsInput
+): Promise<void> {
+  if (input.startDate && input.endDate && input.endDate < input.startDate) {
+    throw new Error("End date must not be before start date.");
+  }
+
+  await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ status: championships.status })
+      .from(championships)
+      .where(eq(championships.id, input.championshipId))
+      .limit(1);
+
+    if (!existing) {
+      throw new Error("Championship not found.");
+    }
+    if (existing.status !== "DRAFT") {
+      throw new Error(
+        "Only a DRAFT championship's details can be edited."
+      );
+    }
+
+    await tx
+      .update(championships)
+      .set({
+        name: input.name,
+        startDate: input.startDate,
+        endDate: input.endDate,
+      })
+      .where(eq(championships.id, input.championshipId));
+  });
+}

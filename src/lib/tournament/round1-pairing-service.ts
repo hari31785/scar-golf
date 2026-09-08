@@ -5,11 +5,12 @@ import { db, type DbTransaction } from "@/db";
 import {
   championshipPlayers,
   championshipRounds,
+  members,
   pairingGenerations,
   roundGroupPlayers,
   roundGroups,
 } from "@/db/schema";
-import { computeGroupSizes, type PairingGroup } from "./pairing";
+import { computeGroupSizes, assignCarts, type PairingGroup } from "./pairing";
 
 export class Round1PairingError extends Error {}
 
@@ -221,20 +222,30 @@ export async function generateAndPersistRound1Pairing(params: {
       );
     }
 
+    // Membership type is read live from `members` (joined), NOT from
+    // `championshipPlayers.membershipTypeSnapshot` — that snapshot is
+    // only populated when the championship actually starts (see
+    // src/lib/tournament/start.ts), but this pairing generation must
+    // also work BEFORE start (admin can generate Round 1 pairings ahead
+    // of time so players know their groups/carts). Both sources reflect
+    // the same underlying `members.membershipType` value, so results
+    // are identical either way — this just removes the timing
+    // dependency on the snapshot having been written yet.
     const allPlayers = await tx
       .select({
         id: championshipPlayers.id,
         participantStatus: championshipPlayers.participantStatus,
-        membershipTypeSnapshot: championshipPlayers.membershipTypeSnapshot,
+        membershipType: members.membershipType,
       })
       .from(championshipPlayers)
+      .innerJoin(members, eq(members.id, championshipPlayers.memberId))
       .where(eq(championshipPlayers.championshipId, round.championshipId));
 
     const activePlayers: ActivePlayer[] = allPlayers
       .filter((p) => p.participantStatus === "ACTIVE")
       .map((p) => ({
         championshipPlayerId: p.id,
-        membershipTypeSnapshot: p.membershipTypeSnapshot,
+        membershipTypeSnapshot: p.membershipType,
       }));
 
     if (activePlayers.length === 0) {
@@ -257,12 +268,14 @@ export async function generateAndPersistRound1Pairing(params: {
 
       groupIds.push(insertedGroup.id);
 
+      const cartNumbers = assignCarts(groupPlayerIds);
       for (const [position, championshipPlayerId] of groupPlayerIds.entries()) {
         await tx.insert(roundGroupPlayers).values({
           roundGroupId: insertedGroup.id,
           championshipRoundId,
           championshipPlayerId,
           position: position + 1,
+          cartNumber: cartNumbers[position],
         });
       }
     }

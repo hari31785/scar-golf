@@ -70,13 +70,23 @@ export function TeeTimeEditor({ round }: { round: ChampionshipRoundPairings }) {
         {round.groups.map((group) => (
           <div key={group.roundGroupId} className="flex flex-col gap-1.5">
             <p className="text-xs font-semibold text-foreground">Group {group.groupNumber}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {group.players
-                .slice()
-                .sort((a, b) => a.position - b.position)
-                .map((p) => p.displayName)
-                .join(", ")}
-            </p>
+            <div className="flex flex-col gap-0.5">
+              {Object.entries(
+                group.players
+                  .slice()
+                  .sort((a, b) => a.position - b.position)
+                  .reduce<Record<string, string[]>>((acc, p) => {
+                    const key = String(p.cartNumber ?? "—");
+                    (acc[key] ??= []).push(p.displayName);
+                    return acc;
+                  }, {})
+              ).map(([cartNumber, names]) => (
+                <p key={cartNumber} className="truncate text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground/70">Cart {cartNumber}: </span>
+                  {names.join(", ")}
+                </p>
+              ))}
+            </div>
             <Input
               type="datetime-local"
               value={teeTimes[group.roundGroupId] ?? ""}

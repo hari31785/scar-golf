@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import type { AdminChampionshipSummary, AdminChampionshipMemberRow, AdminParticipantStatusRow } from "@/lib/admin/championship-data";
@@ -10,6 +11,7 @@ import { ChampionshipSummaryCard } from "@/components/admin/championship-summary
 import { ChampionshipParticipantRow } from "@/components/admin/championship-participant-row";
 import { ParticipantStatusRow } from "@/components/admin/participant-status-row";
 import { RoundSetupSection } from "@/components/admin/round-setup-section";
+import { GeneratePairingsSection } from "@/components/admin/generate-pairings-section";
 import { StartChampionshipSection } from "@/components/admin/start-championship-section";
 import { PairingsSection } from "@/components/admin/pairings-section";
 import { ScoreCorrectionsSection } from "@/components/admin/score-corrections-section";
@@ -45,6 +47,26 @@ export function AdminChampionshipView({
   const permanentMembers = members.filter((m) => m.membershipType === "PERMANENT");
   const associateMembers = members.filter((m) => m.membershipType === "ASSOCIATE");
 
+  // Round 1's championshipRoundId if it exists but has no pairings yet
+  // — used to show the "Generate Round 1 Pairings" action ahead of
+  // championship start. Null once pairings already exist (or there's
+  // no round 1 at all).
+  const round1Pairing = pairingRounds.find((r) => r.roundNumber === 1);
+  const round1NeedsPairing =
+    round1Pairing && round1Pairing.groups.length === 0
+      ? round1Pairing.championshipRoundId
+      : null;
+
+  // Fallback for hash-anchor navigation (e.g. /admin/championship#settings
+  // from the Admin Control Center): App Router hash-scroll can miss once
+  // this client view mounts after the initial navigation, so nudge it
+  // into view ourselves if the URL already has the #settings hash.
+  useEffect(() => {
+    if (window.location.hash !== "#settings") return;
+    const el = document.getElementById("settings");
+    el?.scrollIntoView({ block: "start" });
+  }, []);
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-muted/30">
       <header className="sticky top-0 z-20 border-b border-emerald-900/10 bg-emerald-950 px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 text-white">
@@ -78,6 +100,10 @@ export function AdminChampionshipView({
             <ChampionshipSummaryCard championship={championship} />
 
             {rounds.length > 0 && <RoundSetupSection rounds={rounds} isDraft={isDraft} />}
+
+            {isDraft && round1NeedsPairing && (
+              <GeneratePairingsSection championshipRoundId={round1NeedsPairing} />
+            )}
 
             {isDraft && <StartChampionshipSection championship={championship} rounds={rounds} />}
 
