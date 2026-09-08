@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Loader2, Crown } from "lucide-react";
+import { KeyRound, Loader2, Crown, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -157,9 +157,22 @@ export function MemberRow({
             <Badge variant={isActive ? "secondary" : "destructive"}>
               {isActive ? "Active" : "Inactive"}
             </Badge>
+            {member.passkeyCount > 0 ? (
+              <Badge className="border-emerald-200 bg-emerald-50 text-emerald-800">
+                Enrolled
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-muted-foreground">
+                Not enrolled
+              </Badge>
+            )}
           </div>
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <KeyRound className="size-3.5" />
+            {member.passkeyCount > 0 ? (
+              <CheckCircle2 className="size-3.5 text-emerald-600" />
+            ) : (
+              <KeyRound className="size-3.5" />
+            )}
             {passkeyStatusLabel(member.passkeyCount)}
           </p>
 
@@ -271,15 +284,22 @@ export function MemberRow({
 
         <Button
           type="button"
+          variant={member.passkeyCount > 0 ? "outline" : "default"}
           disabled={!isActive || isCreating}
           onClick={handleCreateInvite}
-          className="h-11 w-full rounded-xl bg-emerald-900 text-sm font-semibold text-emerald-50 hover:bg-emerald-800 disabled:bg-muted disabled:text-muted-foreground"
+          className={
+            member.passkeyCount > 0
+              ? "h-9 w-full rounded-xl text-xs font-medium"
+              : "h-11 w-full rounded-xl bg-emerald-900 text-sm font-semibold text-emerald-50 hover:bg-emerald-800 disabled:bg-muted disabled:text-muted-foreground"
+          }
         >
           {isCreating ? (
             <>
               <Loader2 className="size-4 animate-spin" />
               Creating…
             </>
+          ) : member.passkeyCount > 0 ? (
+            "Create Additional Invite"
           ) : member.outstandingInvite ? (
             "Regenerate Invite"
           ) : (
