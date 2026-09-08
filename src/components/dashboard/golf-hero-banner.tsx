@@ -1,38 +1,35 @@
-import { Flag } from "lucide-react";
+import Image from "next/image";
 
 /**
- * Compact SCAR brand identity strip shown at the top of the Home page
- * main content. This is brand identity only — NOT another dashboard
- * card — so it stays short and does not duplicate the round/tee-time/
- * group details already shown prominently on the active championship
- * card below.
- *
- * No image asset is used here (see PR history: public/images only has
- * approved-design MOCKUP screenshots with baked-in text/UI, unsuitable
- * as real page artwork). All visible text is real HTML.
+ * Prominent photographic brand hero shown at the top of the Home page
+ * main content. Reuses the same approved golf-course photograph already
+ * used on the sign-in page (public/images/scar-golf-hero.png) — no new
+ * image asset is introduced here. Only the approved identity copy
+ * ("SCAR" / "Golf. Friends. Competition.") is rendered; no other
+ * slogans or mock tournament content.
  */
 export function GolfHeroBanner() {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl bg-gradient-to-r from-emerald-950 to-emerald-900 px-4 py-3 text-white sm:px-5 sm:py-3.5">
-      <div className="min-w-0">
-        <p className="text-[0.6rem] font-bold tracking-[0.2em] text-emerald-300 uppercase">
-          Est. Championship Series
-        </p>
-        <p className="mt-0.5 truncate text-sm font-bold text-white sm:text-base">
-          South Carolina Amateur Round
-        </p>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
+    <div className="relative h-52 w-full overflow-hidden rounded-2xl shadow-lg shadow-emerald-950/20 sm:h-64">
+      <Image
+        src="/images/scar-golf-hero.png"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 1024px) 1200px, 100vw"
+        className="object-cover object-[65%_center] sm:object-[center_center]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/70 via-emerald-950/10 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-0.5 px-4 pb-3 sm:px-5 sm:pb-4">
         <p
-          className="hidden text-xs text-emerald-200/80 italic sm:block"
+          className="text-6xl font-bold tracking-wide text-white sm:text-7xl"
           style={{ fontFamily: "var(--font-scar-display)" }}
         >
+          SCAR
+        </p>
+        <p className="text-base font-medium text-emerald-100/90 italic sm:text-lg">
           Golf. Friends. Competition.
         </p>
-        <span className="flex size-8 items-center justify-center rounded-full bg-white/10 text-emerald-300">
-          <Flag className="size-4" />
-        </span>
       </div>
     </div>
   );

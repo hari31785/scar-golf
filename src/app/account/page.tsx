@@ -5,6 +5,7 @@ import { getCurrentMember } from "@/lib/current-member";
 import { getInitials } from "@/lib/members";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
+import { PageHero } from "@/components/dashboard/page-hero";
 import { PasskeyManager } from "@/components/auth/passkey-manager";
 
 export default async function AccountPage() {
@@ -30,6 +31,7 @@ export default async function AccountPage() {
       />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-5 pb-28 pt-5">
+        <PageHero title="Account & Security" />
         <PasskeyManager
           initialPasskeys={passkeys.map((p) => ({
             id: p.id,

@@ -8,6 +8,7 @@ import { AddMemberForm } from "@/components/admin/add-member-form";
 import { useState } from "react";
 import { InviteLinkDialog } from "@/components/admin/invite-link-dialog";
 import type { InviteResult } from "@/components/admin/invite-result";
+import { PageHero } from "@/components/dashboard/page-hero";
 
 export function AdminMembersView({
   members,
@@ -40,6 +41,7 @@ export function AdminMembersView({
       </header>
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 pb-16 pt-5">
+        <PageHero title="Member Management" />
         <AddMemberForm />
         {members.map((member) => (
           <MemberRow

@@ -18,8 +18,11 @@ export function AppHeader({
       <div className="relative mx-auto flex w-full max-w-[1200px] items-center justify-between">
         <div className="flex items-center gap-2">
           <Palmtree className="size-5 shrink-0 text-emerald-300" strokeWidth={1.5} />
-          <p className="text-xs font-semibold tracking-[0.2em] text-white/90 uppercase">
-            SCAR Championship
+          <p
+            className="text-lg font-bold tracking-wide text-white"
+            style={{ fontFamily: "var(--font-scar-display)" }}
+          >
+            SCAR
           </p>
         </div>
 

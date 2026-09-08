@@ -5,6 +5,7 @@ import { getCurrentMember } from "@/lib/current-member";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { getInitials } from "@/lib/members";
+import { PageHero } from "@/components/dashboard/page-hero";
 
 function Section({
   title,
@@ -39,6 +40,7 @@ export default async function HowToPage() {
       />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-5 pb-28 pt-5">
+        <PageHero title="How To" />
         <Link
           href="/more"
           className="mb-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-emerald-800/80"
@@ -46,9 +48,6 @@ export default async function HowToPage() {
           <ArrowLeft className="size-3.5" />
           More
         </Link>
-        <h1 className="mb-1 text-xl font-semibold tracking-tight text-foreground">
-          How To
-        </h1>
 
         <Section title="1. Add SCAR to your Home Screen">
           <p className="font-medium text-foreground">iPhone / iOS</p>

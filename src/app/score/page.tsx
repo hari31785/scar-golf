@@ -3,6 +3,7 @@ import { getCurrentMember } from "@/lib/current-member";
 import { getInitials } from "@/lib/members";
 import { getCurrentGroupForMember } from "@/lib/tournament/current-group";
 import { AppHeader } from "@/components/dashboard/app-header";
+import { PageHero } from "@/components/dashboard/page-hero";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ export default async function ScorePage() {
       />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 px-5 pb-28 pt-5">
+        <PageHero title="Score" />
         {result.state === "no-active-championship" && (
           <EmptyState
             title="No championship in progress"

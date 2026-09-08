@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Trophy, Users, Settings } from "lucide-react";
 import { getCurrentMember } from "@/lib/current-member";
+import { PageHero } from "@/components/dashboard/page-hero";
 
 export const metadata: Metadata = {
   title: "Admin · SCAR Championship",
@@ -70,6 +71,7 @@ export default async function AdminDashboardPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 pb-16 pt-5">
+        <PageHero title="Admin" />
         {cards.map(({ href, title, description, cta, icon: Icon }) => (
           <Link
             key={href}

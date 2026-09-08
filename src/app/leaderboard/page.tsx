@@ -4,6 +4,7 @@ import { getLeaderboardPageData } from "@/lib/tournament/leaderboard";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { getInitials } from "@/lib/members";
+import { PageHero } from "@/components/dashboard/page-hero";
 import { LeaderboardClient } from "./leaderboard-client";
 import { Trophy } from "lucide-react";
 
@@ -25,6 +26,9 @@ export default async function LeaderboardPage() {
       />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-0 pb-28 pt-0">
+        <div className="px-5 pt-4">
+          <PageHero title="Leaderboard" />
+        </div>
         {data.state === "found" ? (
           <LeaderboardClient initialData={data} currentMemberId={member.id} />
         ) : (

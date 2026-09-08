@@ -17,6 +17,7 @@ import { PairingsSection } from "@/components/admin/pairings-section";
 import { ScoreCorrectionsSection } from "@/components/admin/score-corrections-section";
 import { PlayoffSection } from "@/components/admin/playoff-section";
 import { AdminSettingsSection } from "@/components/admin/admin-settings-section";
+import { PageHero } from "@/components/dashboard/page-hero";
 import type { TiedPlayerRow, PlayoffSessionState } from "@/lib/tournament/playoff";
 
 export function AdminChampionshipView({
@@ -91,6 +92,7 @@ export function AdminChampionshipView({
       </header>
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pb-16 pt-5">
+        <PageHero title="Championships" />
         <AdminSettingsSection initialMaxHandicap={maxHandicap} />
 
         {!championship ? (

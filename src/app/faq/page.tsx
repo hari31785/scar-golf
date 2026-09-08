@@ -5,6 +5,7 @@ import { getCurrentMember } from "@/lib/current-member";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { getInitials } from "@/lib/members";
+import { PageHero } from "@/components/dashboard/page-hero";
 
 const faqs: { q: string; a: React.ReactNode }[] = [
   {
@@ -151,6 +152,7 @@ export default async function FaqPage() {
       />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-5 pb-28 pt-5">
+        <PageHero title="FAQ" />
         <Link
           href="/more"
           className="mb-1 inline-flex w-fit items-center gap-1 text-xs font-medium text-emerald-800/80"
@@ -158,9 +160,6 @@ export default async function FaqPage() {
           <ArrowLeft className="size-3.5" />
           More
         </Link>
-        <h1 className="mb-1 text-xl font-semibold tracking-tight text-foreground">
-          FAQ
-        </h1>
 
         <div className="flex flex-col gap-2">
           {faqs.map(({ q, a }) => (

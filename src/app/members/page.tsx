@@ -5,6 +5,7 @@ import { listMemberDirectory } from "@/lib/handicap/page-data";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { getInitials } from "@/lib/members";
+import { PageHero } from "@/components/dashboard/page-hero";
 import { MembersClient } from "./members-client";
 
 export const metadata: Metadata = {
@@ -29,6 +30,9 @@ export default async function MembersPage() {
       />
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-0 pb-28 pt-0">
+        <div className="px-5 pt-4">
+          <PageHero title="Members" />
+        </div>
         {rows.length > 0 ? (
           <MembersClient rows={rows} />
         ) : (
