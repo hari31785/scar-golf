@@ -15,6 +15,7 @@ import { calculateHandicapForMember } from "@/lib/handicap/service";
 import { getCurrentGroupForMember } from "@/lib/tournament/current-group";
 import { getLeaderboardPageData } from "@/lib/tournament/leaderboard";
 import { getChampionshipsPlayedCountForMember } from "@/lib/tournament/history";
+import { formatTeeTime } from "@/lib/format-date";
 
 const displaySerif = Playfair_Display({
   subsets: ["latin"],
@@ -22,16 +23,6 @@ const displaySerif = Playfair_Display({
   variable: "--font-scar-display",
 });
 
-function formatTeeTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-/** Derives display initials from a member's full display name — a
- * formatting-only helper (no invented data). */
 function initialsFromDisplayName(name: string): string {
   const parts = name.trim().split(/\s+/);
   const first = parts[0]?.[0] ?? "";
@@ -106,7 +97,7 @@ export default async function Home() {
                 name={`${groupResult.championshipName} ${groupResult.year}`}
                 round={groupResult.roundNumber}
                 totalRounds={groupResult.totalRounds}
-                teeTime={formatTeeTime(groupResult.teeTime)}
+                teeTime={formatTeeTime(groupResult.teeTime) ?? "—"}
                 groupNumber={groupResult.groupNumber}
                 course={groupResult.courseName ?? "Course TBD"}
               />

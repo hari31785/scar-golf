@@ -8,15 +8,7 @@ import { BottomNav } from "@/components/dashboard/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Flag, Clock, Users, ChevronRight, CircleUserRound } from "lucide-react";
-
-function formatTeeTime(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  return date.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+import { formatTeeTime } from "@/lib/format-date";
 
 function groupStatusLabel(status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED") {
   switch (status) {

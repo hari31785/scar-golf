@@ -26,3 +26,30 @@ export function formatCalendarDate(iso: string | null): string {
     timeZone: "UTC",
   });
 }
+
+/**
+ * Formats a round-group tee time as a clock time in the SCAR
+ * championship's actual local timezone (America/New_York), regardless
+ * of where this code executes.
+ *
+ * Why this exists: tee times are a real-world clock time at the course
+ * ("8:12 AM"), not a viewer-relative moment. `toLocaleTimeString(undefined, ...)`
+ * (no `timeZone`) renders in whatever timezone the CODE is running in —
+ * which is the visitor's browser for client components, but is the
+ * SERVER's timezone (UTC on Vercel) for server components. That
+ * mismatch was producing a several-hour-off display (e.g. "6:20 PM"
+ * instead of "2:20 PM") on server-rendered pages like Home and Score,
+ * while the client-rendered Pairings page happened to look correct only
+ * for viewers already in US Eastern time. Forcing `timeZone:
+ * "America/New_York"` here makes every page show the same, correct,
+ * course-local tee time for every viewer everywhere.
+ */
+export function formatTeeTime(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  });
+}
+

@@ -5,15 +5,12 @@ import { cn } from "cn";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { PairingsPageData } from "@/lib/tournament/pairing-summary";
+import { formatTeeTime as formatTeeTimeShared } from "@/lib/format-date";
 
 type FoundData = Extract<PairingsPageData, { state: "found" }>;
 
 function formatTeeTime(iso: string | null): string {
-  if (!iso) return "Tee time TBD";
-  return new Date(iso).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatTeeTimeShared(iso) ?? "Tee time TBD";
 }
 
 function membershipLabel(type: "PERMANENT" | "ASSOCIATE" | null) {
