@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
+import { Trophy } from "lucide-react";
 import type { LeaderboardPageData } from "@/lib/tournament/leaderboard";
 
 type FoundData = Extract<LeaderboardPageData, { state: "found" }>;
@@ -90,7 +91,7 @@ export function LeaderboardClient({
                 key={entry.championshipPlayerId}
                 className={cn(
                   "flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10",
-                  isLeader && "bg-emerald-950 text-white ring-emerald-950",
+                  isLeader && "bg-gradient-to-r from-amber-400 to-amber-500 text-emerald-950 ring-amber-500",
                   !isLeader && isTopThree && "ring-2 ring-emerald-700/40"
                 )}
               >
@@ -98,7 +99,7 @@ export function LeaderboardClient({
                   className={cn(
                     "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums",
                     isLeader
-                      ? "bg-emerald-400 text-emerald-950"
+                      ? "bg-emerald-950 text-amber-300"
                       : isTopThree
                         ? "bg-emerald-900/10 text-emerald-900"
                         : "bg-muted text-muted-foreground"
@@ -110,16 +111,17 @@ export function LeaderboardClient({
                 <div className="min-w-0 flex-1">
                   <p
                     className={cn(
-                      "truncate text-sm font-semibold",
-                      isLeader ? "text-white" : "text-foreground"
+                      "flex items-center gap-1.5 truncate text-sm font-semibold",
+                      isLeader ? "text-emerald-950" : "text-foreground"
                     )}
                   >
+                    {isLeader && <Trophy className="size-3.5 shrink-0 text-emerald-950" />}
                     {entry.displayName}
                     {isSelf ? (
                       <span
                         className={cn(
-                          "ml-2 text-xs font-normal",
-                          isLeader ? "text-emerald-200" : "text-emerald-700"
+                          "ml-1 text-xs font-normal",
+                          isLeader ? "text-emerald-900" : "text-emerald-700"
                         )}
                       >
                         You
@@ -129,7 +131,7 @@ export function LeaderboardClient({
                   <p
                     className={cn(
                       "text-xs",
-                      isLeader ? "text-emerald-200" : "text-muted-foreground"
+                      isLeader ? "text-emerald-900/80" : "text-muted-foreground"
                     )}
                   >
                     HCP {entry.frozenHandicap ?? "—"} · {entry.completedRounds} round
@@ -141,7 +143,7 @@ export function LeaderboardClient({
                   <p
                     className={cn(
                       "text-sm font-bold tabular-nums",
-                      isLeader ? "text-white" : "text-foreground"
+                      isLeader ? "text-emerald-950" : "text-foreground"
                     )}
                   >
                     {entry.cumulativeNet}
@@ -149,7 +151,7 @@ export function LeaderboardClient({
                   <p
                     className={cn(
                       "text-xs tabular-nums",
-                      isLeader ? "text-emerald-200" : "text-muted-foreground"
+                      isLeader ? "text-emerald-900/80" : "text-muted-foreground"
                     )}
                   >
                     Gross {entry.cumulativeGross}

@@ -8,6 +8,7 @@ import {
   championshipRounds,
   scorecardSubmissions,
   members,
+  playedRounds,
 } from "@/db/schema";
 
 /** One card's worth of summary data for the /history list. */
@@ -28,24 +29,49 @@ export type HistoryChampionshipSummary = {
 };
 
 /**
- * Counts the distinct championships a member has been an ACTIVE
- * participant in (any status — past or current). Reuses
- * `championshipPlayers` directly; a simple existing-schema read, not a
- * new historical subsystem.
+ * Counts distinct championship YEARS a member has actually played,
+ * counting only:
+ *   - real in-app championships that have reached COMPLETED status
+ *     (an ACTIVE/DRAFT/in-progress championship is deliberately
+ *     excluded — it hasn't finished, so it shouldn't count as "played"
+ *     yet), and
+ *   - years present in their imported historical rounds
+ *     (`played_rounds` with source = HISTORICAL_IMPORT), which cover
+ *     championships played before this app existed.
+ *
+ * Deduplicates by YEAR (not by row) so a year that has both an
+ * imported round and a real completed championship record is only
+ * counted once.
  */
 export async function getChampionshipsPlayedCountForMember(
   memberId: string
 ): Promise<number> {
-  const rows = await db
-    .select({ championshipId: championshipPlayers.championshipId })
+  const completedChampionshipRows = await db
+    .select({ year: championships.year })
     .from(championshipPlayers)
+    .innerJoin(championships, eq(championships.id, championshipPlayers.championshipId))
     .where(
       and(
         eq(championshipPlayers.memberId, memberId),
-        eq(championshipPlayers.participantStatus, "ACTIVE")
+        eq(championships.status, "COMPLETED")
       )
     );
-  return new Set(rows.map((r) => r.championshipId)).size;
+
+  const historicalRows = await db
+    .select({ playedAt: playedRounds.playedAt })
+    .from(playedRounds)
+    .where(
+      and(
+        eq(playedRounds.memberId, memberId),
+        eq(playedRounds.source, "HISTORICAL_IMPORT")
+      )
+    );
+
+  const years = new Set<number>();
+  for (const row of completedChampionshipRows) years.add(row.year);
+  for (const row of historicalRows) years.add(new Date(row.playedAt).getFullYear());
+
+  return years.size;
 }
 
 /**
