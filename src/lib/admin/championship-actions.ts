@@ -325,6 +325,12 @@ export async function saveTeeTimesAction(params: {
     });
     revalidatePath("/admin/championship");
     revalidatePath("/pairings");
+    // Home ("/") and "/score" also render this same group's tee time
+    // (via getCurrentGroupForMember) — must be revalidated too, or
+    // they'll keep showing the stale cached tee time until a hard
+    // reload even though Pairings already shows the fresh value.
+    revalidatePath("/");
+    revalidatePath("/score");
     return { ok: true };
   } catch (err) {
     return {
