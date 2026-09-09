@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Award, MapPin, ChevronRight } from "lucide-react";
+import { Award, MapPin, ChevronRight, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,12 @@ import {
 } from "@/components/ui/dialog";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { formatCalendarDate } from "@/lib/format-date";
-import type { MemberChampionshipYear } from "@/lib/tournament/history";
+import type {
+  MemberChampionshipYear,
+  MemberYearRoundDetail,
+  RoundHoleDetail,
+} from "@/lib/tournament/history";
+import { getRoundHoleDetailAction } from "@/app/actions/round-hole-detail";
 
 /**
  * Wraps the "Championships" StatCard on the dashboard with a
@@ -22,9 +27,12 @@ import type { MemberChampionshipYear } from "@/lib/tournament/history";
  *      with its cumulative score for that year.
  *   2. Clicking a year opens a second modal with that year's individual
  *      round breakdown (course + score per round).
- *
- * All data is fetched once, server-side, and passed in as `years` — no
- * extra round-trips are needed to open either modal.
+ *   3. Clicking a round (only when hole-level data exists — i.e. a real
+ *      in-app round, never an imported historical row) opens a third
+ *      modal with the 18-hole breakdown: Hole #, Par, Handicap (stroke
+ *      index), and the score shot, highlighted in a distinct color.
+ *      Historical/workbook rounds show a brief inline notice instead of
+ *      opening a modal, since no hole-level data exists for them.
  */
 export function ChampionshipsPlayedCard({
   years,
@@ -33,8 +41,39 @@ export function ChampionshipsPlayedCard({
 }) {
   const [yearsOpen, setYearsOpen] = useState(false);
   const [selectedYear, setSelectedYear] = useState<MemberChampionshipYear | null>(null);
+  const [selectedRound, setSelectedRound] = useState<MemberYearRoundDetail | null>(null);
+  const [holeState, setHoleState] = useState<
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "found"; holes: RoundHoleDetail[] }
+    | null
+  >(null);
+  const [unavailableNotice, setUnavailableNotice] = useState(false);
+
+  async function handleRoundClick(round: MemberYearRoundDetail) {
+    if (!round.championshipRoundId || !round.championshipPlayerId) {
+      // Historical/workbook rounds have no hole-level data — show a
+      // brief inline notice instead of opening a modal.
+      setUnavailableNotice(true);
+      window.setTimeout(() => setUnavailableNotice(false), 2500);
+      return;
+    }
+
+    setSelectedRound(round);
+    setHoleState({ status: "loading" });
+    const result = await getRoundHoleDetailAction({
+      championshipRoundId: round.championshipRoundId,
+      championshipPlayerId: round.championshipPlayerId,
+    });
+    if (result.ok) {
+      setHoleState({ status: "found", holes: result.holes });
+    } else {
+      setHoleState({ status: "error", message: result.error });
+    }
+  }
 
   return (
+
     <>
       <button
         type="button"
@@ -108,16 +147,24 @@ export function ChampionshipsPlayedCard({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2">
+          {unavailableNotice ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-800 ring-1 ring-amber-200">
+              Detailed score is unavailable for this round.
+            </p>
+          ) : null}
+
+          <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
             {selectedYear?.rounds.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
                 No round data recorded for this year.
               </p>
             ) : (
               selectedYear?.rounds.map((r) => (
-                <div
+                <button
                   key={r.roundNumber}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-card px-3.5 py-3 ring-1 ring-foreground/10"
+                  type="button"
+                  onClick={() => handleRoundClick(r)}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-card px-3.5 py-3 text-left ring-1 ring-foreground/10 transition active:scale-[0.99]"
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">
@@ -138,11 +185,74 @@ export function ChampionshipsPlayedCard({
                       </p>
                     ) : null}
                   </div>
-                  <p className="text-lg font-semibold text-foreground">{r.score}</p>
-                </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <p className="text-lg font-semibold text-foreground">{r.score}</p>
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  </div>
+                </button>
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={selectedRound !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedRound(null);
+            setHoleState(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Round {selectedRound?.roundNumber}</DialogTitle>
+            <DialogDescription>
+              {selectedRound?.courseName
+                ? `${selectedRound.courseName}${selectedRound.courseCity ? ` (${selectedRound.courseCity})` : ""}`
+                : "Hole-by-hole breakdown"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {holeState?.status === "loading" ? (
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading scorecard…
+            </div>
+          ) : holeState?.status === "error" ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              {holeState.message}
+            </p>
+          ) : holeState?.status === "found" ? (
+            holeState.holes.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                Detailed score is unavailable for this round.
+              </p>
+            ) : (
+              <div className="flex max-h-[60vh] flex-col overflow-y-auto rounded-xl ring-1 ring-foreground/10">
+                <div className="grid grid-cols-4 gap-2 bg-muted/60 px-3.5 py-2 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Hole</span>
+                  <span>Par</span>
+                  <span>Hcp</span>
+                  <span className="text-right">Score</span>
+                </div>
+                {holeState.holes.map((h) => (
+                  <div
+                    key={h.holeNumber}
+                    className="grid grid-cols-4 gap-2 border-t border-foreground/5 bg-card px-3.5 py-2.5 text-sm"
+                  >
+                    <span className="font-medium text-foreground">{h.holeNumber}</span>
+                    <span className="text-muted-foreground">{h.par ?? "—"}</span>
+                    <span className="text-muted-foreground">{h.strokeIndex ?? "—"}</span>
+                    <span className="text-right text-base font-bold text-emerald-700">
+                      {h.grossScore}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

@@ -6,6 +6,8 @@ import {
   championships,
   championshipPlayers,
   championshipRounds,
+  championshipRoundHoles,
+  holeScores,
   scorecardSubmissions,
   members,
   playedRounds,
@@ -358,6 +360,14 @@ export type MemberYearRoundDetail = {
   courseCity: string | null;
   score: number;
   playedDate: string | null;
+  /**
+   * Present only for real, in-app rounds (never for imported historical
+   * rows) — lets the UI fetch the hole-by-hole breakdown on demand via
+   * `getRoundHoleDetailAction`. Null means "detailed score is
+   * unavailable for this round" (e.g. a historical/workbook import).
+   */
+  championshipRoundId: string | null;
+  championshipPlayerId: string | null;
 };
 
 /**
@@ -472,6 +482,8 @@ export async function getMemberChampionshipYears(
           courseCity: info?.courseCity ?? null,
           score: sub.grossTotal,
           playedDate: info?.playedDate ? info.playedDate.toISOString() : null,
+          championshipRoundId: sub.championshipRoundId,
+          championshipPlayerId: p.championshipPlayerId,
         };
       })
       .sort((a, b) => a.roundNumber - b.roundNumber);
@@ -537,6 +549,8 @@ export async function getMemberChampionshipYears(
         courseCity: row.courseCity,
         score: row.grossScore,
         playedDate: new Date(row.playedAt).toISOString(),
+        championshipRoundId: null,
+        championshipPlayerId: null,
       }));
       const cumulativeGross = rounds.reduce((sum, r) => sum + r.score, 0);
 
@@ -552,4 +566,69 @@ export async function getMemberChampionshipYears(
     });
 
   return [...completedYears, ...historicalYears].sort((a, b) => b.year - a.year);
+}
+
+/** One hole's worth of detail for the round drill-down modal. */
+export type RoundHoleDetail = {
+  holeNumber: number;
+  par: number | null;
+  strokeIndex: number | null;
+  grossScore: number;
+};
+
+/**
+ * Read-only 18-hole breakdown for one member's round, for the
+ * "Championships Played" drill-down's third level. Only ever called
+ * for real in-app rounds (the caller must have a non-null
+ * `championshipRoundId`/`championshipPlayerId` from
+ * `getMemberChampionshipYears` — historical/imported rounds never have
+ * hole-level data and must show the "unavailable" message client-side
+ * instead of calling this).
+ *
+ * Returns an empty array if no hole scores are recorded (defensive —
+ * shouldn't happen for a submitted round, but never throws).
+ */
+export async function getRoundHoleDetail(params: {
+  championshipRoundId: string;
+  championshipPlayerId: string;
+}): Promise<RoundHoleDetail[]> {
+  const { championshipRoundId, championshipPlayerId } = params;
+
+  const [scores, holeInfoRows] = await Promise.all([
+    db
+      .select({
+        holeNumber: holeScores.holeNumber,
+        grossScore: holeScores.grossScore,
+      })
+      .from(holeScores)
+      .where(
+        and(
+          eq(holeScores.championshipRoundId, championshipRoundId),
+          eq(holeScores.championshipPlayerId, championshipPlayerId)
+        )
+      )
+      .orderBy(asc(holeScores.holeNumber)),
+    db
+      .select({
+        holeNumber: championshipRoundHoles.holeNumber,
+        par: championshipRoundHoles.par,
+        strokeIndex: championshipRoundHoles.strokeIndex,
+      })
+      .from(championshipRoundHoles)
+      .where(eq(championshipRoundHoles.championshipRoundId, championshipRoundId)),
+  ]);
+
+  const holeInfoByNumber = new Map(
+    holeInfoRows.map((h) => [h.holeNumber, h])
+  );
+
+  return scores.map((s) => {
+    const info = holeInfoByNumber.get(s.holeNumber);
+    return {
+      holeNumber: s.holeNumber,
+      par: info?.par ?? null,
+      strokeIndex: info?.strokeIndex ?? null,
+      grossScore: s.grossScore,
+    };
+  });
 }
