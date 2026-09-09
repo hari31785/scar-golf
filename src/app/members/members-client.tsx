@@ -9,7 +9,7 @@ function membershipLabel(type: "PERMANENT" | "ASSOCIATE") {
 
 export function MembersClient({ rows }: { rows: MemberDirectoryRow[] }) {
   return (
-    <div className="flex flex-1 flex-col gap-2 px-5 pt-5">
+    <div className="flex flex-1 flex-col gap-2 px-5 pt-5 lg:grid lg:grid-cols-2 lg:gap-3 lg:px-8">
       {rows.map((row) => (
         <div
           key={row.memberId}

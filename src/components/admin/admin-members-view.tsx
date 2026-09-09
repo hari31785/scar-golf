@@ -40,16 +40,18 @@ export function AdminMembersView({
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 pb-16 pt-5">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 pb-16 pt-5 lg:max-w-[1200px] lg:px-8">
         <PageHero title="Member Management" />
         <AddMemberForm />
-        {members.map((member) => (
-          <MemberRow
-            key={member.id}
-            member={member}
-            onInviteCreated={setInviteResult}
-          />
-        ))}
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
+          {members.map((member) => (
+            <MemberRow
+              key={member.id}
+              member={member}
+              onInviteCreated={setInviteResult}
+            />
+          ))}
+        </div>
       </main>
 
       <InviteLinkDialog

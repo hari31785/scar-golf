@@ -20,7 +20,7 @@ export function HistoryClient({
   championships: HistoryChampionshipSummary[];
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-3 px-5 pt-5">
+    <div className="flex flex-1 flex-col gap-3 px-5 pt-5 lg:grid lg:grid-cols-2 lg:gap-3 lg:px-8">
       {championships.map((c) => {
         const dateRange = formatDateRange(c.startDate, c.endDate);
         return (

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   championships,
@@ -349,4 +349,207 @@ export async function getChampionshipHistoryDetail(
       playedDate: r.playedDate ? r.playedDate.toISOString() : null,
     })),
   };
+}
+
+/** One round's worth of drill-down detail inside a played year. */
+export type MemberYearRoundDetail = {
+  roundNumber: number;
+  courseName: string | null;
+  courseCity: string | null;
+  score: number;
+  playedDate: string | null;
+};
+
+/**
+ * One year a member actually played, for the "Championships Played"
+ * drill-down modal on the dashboard. Mirrors the same COMPLETED-only +
+ * historical-import rule as `getChampionshipsPlayedCountForMember` —
+ * this is the detail view behind that same stat, so the two must never
+ * drift apart.
+ *
+ * `cumulativeScore` is:
+ *   - net (gross - frozenHandicap * roundsPlayed) for a real COMPLETED
+ *     championship, matching how the leaderboard/history pages already
+ *     define "net" everywhere else, or
+ *   - gross (plain sum of recorded scores) for an imported historical
+ *     year, since those rows have no per-round handicap context.
+ * `scoreType` tells the UI which one it's showing so it's never
+ * mislabeled.
+ */
+export type MemberChampionshipYear = {
+  year: number;
+  championshipId: string | null;
+  championshipName: string | null;
+  scoreType: "net" | "gross";
+  cumulativeScore: number;
+  roundsPlayed: number;
+  rounds: MemberYearRoundDetail[];
+};
+
+/**
+ * Full "Championships Played" drill-down for one member: every year
+ * they played (COMPLETED real championships + imported historical
+ * years), newest first, each with its per-round breakdown ready to
+ * render in a modal without further round-trips.
+ *
+ * Read-only, no writes. Deliberately excludes DRAFT/ACTIVE
+ * championships — same rule as the summary count.
+ */
+export async function getMemberChampionshipYears(
+  memberId: string
+): Promise<MemberChampionshipYear[]> {
+  // --- Real, COMPLETED championships this member has a player row for ---
+  const completedPlayers = await db
+    .select({
+      championshipPlayerId: championshipPlayers.id,
+      championshipId: championships.id,
+      year: championships.year,
+      name: championships.name,
+      frozenHandicap: championshipPlayers.frozenHandicap,
+    })
+    .from(championshipPlayers)
+    .innerJoin(championships, eq(championships.id, championshipPlayers.championshipId))
+    .where(
+      and(
+        eq(championshipPlayers.memberId, memberId),
+        eq(championships.status, "COMPLETED")
+      )
+    );
+
+  const championshipPlayerIds = completedPlayers.map((p) => p.championshipPlayerId);
+  const championshipIds = completedPlayers.map((p) => p.championshipId);
+
+  const submissions =
+    championshipPlayerIds.length > 0
+      ? await db
+          .select({
+            championshipPlayerId: scorecardSubmissions.championshipPlayerId,
+            championshipRoundId: scorecardSubmissions.championshipRoundId,
+            grossTotal: scorecardSubmissions.grossTotal,
+          })
+          .from(scorecardSubmissions)
+          .where(
+            inArray(scorecardSubmissions.championshipPlayerId, championshipPlayerIds)
+          )
+      : [];
+
+  // Round number + course/date info for every round belonging to any of
+  // this member's completed championships, keyed by round id (what a
+  // submission actually references).
+  const roundIdToInfo = new Map(
+    championshipIds.length > 0
+      ? (
+          await db
+            .select({
+              id: championshipRounds.id,
+              championshipId: championshipRounds.championshipId,
+              roundNumber: championshipRounds.roundNumber,
+              courseName: championshipRounds.courseName,
+              courseCity: championshipRounds.courseCity,
+              playedDate: championshipRounds.playedDate,
+            })
+            .from(championshipRounds)
+            .where(inArray(championshipRounds.championshipId, championshipIds))
+        ).map((r) => [r.id, r] as const)
+      : []
+  );
+
+  const submissionsByPlayer = new Map<string, typeof submissions>();
+  for (const sub of submissions) {
+    const list = submissionsByPlayer.get(sub.championshipPlayerId) ?? [];
+    list.push(sub);
+    submissionsByPlayer.set(sub.championshipPlayerId, list);
+  }
+
+  const completedYears: MemberChampionshipYear[] = completedPlayers.map((p) => {
+    const playerSubmissions = submissionsByPlayer.get(p.championshipPlayerId) ?? [];
+    const rounds: MemberYearRoundDetail[] = playerSubmissions
+      .map((sub) => {
+        const info = roundIdToInfo.get(sub.championshipRoundId);
+        return {
+          roundNumber: info?.roundNumber ?? 0,
+          courseName: info?.courseName ?? null,
+          courseCity: info?.courseCity ?? null,
+          score: sub.grossTotal,
+          playedDate: info?.playedDate ? info.playedDate.toISOString() : null,
+        };
+      })
+      .sort((a, b) => a.roundNumber - b.roundNumber);
+
+    const roundsPlayed = rounds.length;
+    const cumulativeGross = rounds.reduce((sum, r) => sum + r.score, 0);
+    const cumulativeNet =
+      roundsPlayed === 0
+        ? 0
+        : cumulativeGross - (p.frozenHandicap ?? 0) * roundsPlayed;
+
+    return {
+      year: p.year,
+      championshipId: p.championshipId,
+      championshipName: p.name,
+      scoreType: "net" as const,
+      cumulativeScore: cumulativeNet,
+      roundsPlayed,
+      rounds,
+    };
+  });
+
+  // --- Imported historical years (pre-app rounds) ---
+  const historicalRows = await db
+    .select({
+      playedAt: playedRounds.playedAt,
+      courseName: playedRounds.courseName,
+      courseCity: playedRounds.courseCity,
+      grossScore: playedRounds.grossScore,
+    })
+    .from(playedRounds)
+    .where(
+      and(
+        eq(playedRounds.memberId, memberId),
+        eq(playedRounds.source, "HISTORICAL_IMPORT")
+      )
+    );
+
+  const historicalByYear = new Map<number, typeof historicalRows>();
+  for (const row of historicalRows) {
+    const year = new Date(row.playedAt).getFullYear();
+    const list = historicalByYear.get(year) ?? [];
+    list.push(row);
+    historicalByYear.set(year, list);
+  }
+
+  const completedYearSet = new Set(completedYears.map((y) => y.year));
+
+  const historicalYears: MemberChampionshipYear[] = Array.from(
+    historicalByYear.entries()
+  )
+    // A year already covered by a real COMPLETED championship keeps that
+    // record as authoritative — never show a duplicate entry for the
+    // same year.
+    .filter(([year]) => !completedYearSet.has(year))
+    .map(([year, rows]) => {
+      const sortedRows = [...rows].sort(
+        (a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime()
+      );
+      const rounds: MemberYearRoundDetail[] = sortedRows.map((row, index) => ({
+        roundNumber: index + 1,
+        courseName: row.courseName,
+        courseCity: row.courseCity,
+        score: row.grossScore,
+        playedDate: new Date(row.playedAt).toISOString(),
+      }));
+      const cumulativeGross = rounds.reduce((sum, r) => sum + r.score, 0);
+
+      return {
+        year,
+        championshipId: null,
+        championshipName: null,
+        scoreType: "gross" as const,
+        cumulativeScore: cumulativeGross,
+        roundsPlayed: rounds.length,
+        rounds,
+      };
+    });
+
+  return [...completedYears, ...historicalYears].sort((a, b) => b.year - a.year);
 }

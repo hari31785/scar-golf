@@ -33,7 +33,7 @@ export default async function HistoryPage() {
         isAdmin={member.appRole === "ADMIN"}
       />
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-0 pb-28 pt-0">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-0 pb-28 pt-0 lg:max-w-[1200px]">
         <div className="px-5 pt-4">
           <PageHero title="History" />
         </div>

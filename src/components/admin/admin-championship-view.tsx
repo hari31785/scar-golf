@@ -91,7 +91,7 @@ export function AdminChampionshipView({
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pb-16 pt-5">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 pb-16 pt-5 lg:max-w-[1200px] lg:px-8">
         <PageHero title="Championships" />
         <AdminSettingsSection initialMaxHandicap={maxHandicap} />
 
@@ -159,7 +159,7 @@ export function AdminChampionshipView({
                     <h2 className="px-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                       Permanent
                     </h2>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3">
                       {permanentMembers.map((member) => (
                         <ChampionshipParticipantRow
                           key={member.memberId}
@@ -177,7 +177,7 @@ export function AdminChampionshipView({
                     <h2 className="px-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                       Associate
                     </h2>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3">
                       {associateMembers.map((member) => (
                         <ChampionshipParticipantRow
                           key={member.memberId}

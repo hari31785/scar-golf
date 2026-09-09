@@ -41,7 +41,7 @@ export default async function ImportedYearPage({
         isAdmin={member.appRole === "ADMIN"}
       />
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-0 pb-28 pt-0">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-0 pb-28 pt-0 lg:max-w-2xl">
         <ImportedYearClient year={yearSummary} groups={groups} />
       </main>
 

@@ -8,13 +8,14 @@ import { QuickActions } from "@/components/dashboard/quick-actions";
 import { GolfHeroBanner } from "@/components/dashboard/golf-hero-banner";
 import { BrandQuoteCard } from "@/components/dashboard/brand-quote-card";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
-import { Target, Award, Flag } from "lucide-react";
+import { Target, Flag } from "lucide-react";
 import { getCurrentMember } from "@/lib/current-member";
 import { getInitials } from "@/lib/members";
 import { calculateHandicapForMember } from "@/lib/handicap/service";
 import { getCurrentGroupForMember } from "@/lib/tournament/current-group";
 import { getLeaderboardPageData } from "@/lib/tournament/leaderboard";
-import { getChampionshipsPlayedCountForMember } from "@/lib/tournament/history";
+import { getMemberChampionshipYears } from "@/lib/tournament/history";
+import { ChampionshipsPlayedCard } from "@/components/dashboard/championships-played-card";
 import { formatTeeTime } from "@/lib/format-date";
 
 const displaySerif = Playfair_Display({
@@ -58,12 +59,12 @@ export default async function Home() {
   // server-side in /admin/members and every admin server action.
   const { member } = current;
 
-  const [handicapResult, groupResult, leaderboardData, championshipsPlayed] =
+  const [handicapResult, groupResult, leaderboardData, championshipYears] =
     await Promise.all([
       calculateHandicapForMember(member.id),
       getCurrentGroupForMember(member.id),
       getLeaderboardPageData(),
-      getChampionshipsPlayedCountForMember(member.id),
+      getMemberChampionshipYears(member.id),
     ]);
 
   const topThree =
@@ -136,12 +137,7 @@ export default async function Home() {
                 subtext="Current index"
                 icon={Target}
               />
-              <StatCard
-                label="Championships"
-                value={String(championshipsPlayed)}
-                subtext="Played to date"
-                icon={Award}
-              />
+              <ChampionshipsPlayedCard years={championshipYears} />
             </div>
 
             <LeaderboardPreview players={topThree} />

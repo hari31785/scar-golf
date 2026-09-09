@@ -6,7 +6,7 @@ import type { ImportedYearSummary } from "@/lib/handicap/page-data";
 
 export function ImportedYearsClient({ years }: { years: ImportedYearSummary[] }) {
   return (
-    <div className="flex flex-1 flex-col gap-3 px-5 pt-5">
+    <div className="flex flex-1 flex-col gap-3 px-5 pt-5 lg:grid lg:grid-cols-2 lg:gap-3 lg:px-8">
       {years.map((y) => (
         <Link
           key={y.year}

@@ -151,7 +151,7 @@ export default async function FaqPage() {
         isAdmin={member.appRole === "ADMIN"}
       />
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-5 pb-28 pt-5">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-5 pb-28 pt-5 lg:max-w-2xl lg:px-8">
         <PageHero title="FAQ" />
         <Link
           href="/more"
