@@ -357,12 +357,29 @@ export function buildImportedYearSummaries(
 
   const summaries: ImportedYearSummary[] = [];
   for (const [year, list] of byYear) {
-    const cities = new Set(
-      list.map((r) => r.courseCity).filter((c): c is string => !!c)
-    );
-    // Only claim a championship-level location when it's unambiguous —
-    // never guess if a year spans multiple distinct locations.
-    const locationSummary = cities.size === 1 ? [...cities][0] : null;
+    const cityCounts = new Map<string, number>();
+    for (const r of list) {
+      if (!r.courseCity) continue;
+      cityCounts.set(r.courseCity, (cityCounts.get(r.courseCity) ?? 0) + 1);
+    }
+    // Use the city with the most rounds that year as the championship's
+    // host location — a championship year can include a handful of
+    // rounds at a secondary/practice course, so requiring unanimity
+    // hid the location entirely for years like this. Ties fall back to
+    // null rather than guessing.
+    let locationSummary: string | null = null;
+    let topCount = 0;
+    let isTie = false;
+    for (const [city, count] of cityCounts) {
+      if (count > topCount) {
+        topCount = count;
+        locationSummary = city;
+        isTie = false;
+      } else if (count === topCount) {
+        isTie = true;
+      }
+    }
+    if (isTie) locationSummary = null;
     const groupKeys = new Set(list.map(importedRoundGroupKey));
     summaries.push({
       year,
