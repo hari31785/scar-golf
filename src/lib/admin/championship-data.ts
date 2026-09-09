@@ -28,6 +28,8 @@ export type AdminParticipantStatusRow = {
   championshipPlayerId: string;
   displayName: string;
   participantStatus: "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED";
+  /** Null only before championship start (see championship-players.ts doc). */
+  frozenHandicap: number | null;
 };
 
 /**
@@ -115,6 +117,7 @@ export async function listParticipantStatuses(
       championshipPlayerId: championshipPlayers.id,
       participantStatus: championshipPlayers.participantStatus,
       displayName: members.displayName,
+      frozenHandicap: championshipPlayers.frozenHandicap,
     })
     .from(championshipPlayers)
     .innerJoin(members, eq(members.id, championshipPlayers.memberId))

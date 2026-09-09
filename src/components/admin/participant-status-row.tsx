@@ -3,8 +3,12 @@
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { AdminParticipantStatusRow } from "@/lib/admin/championship-data";
-import { setParticipantStatusAction } from "@/lib/admin/championship-actions";
+import {
+  setParticipantStatusAction,
+  updateFrozenHandicapAction,
+} from "@/lib/admin/championship-actions";
 
 const STATUS_OPTIONS = ["ACTIVE", "WITHDRAWN", "DISQUALIFIED"] as const;
 
@@ -28,6 +32,11 @@ export function ParticipantStatusRow({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const [isEditingHcp, setIsEditingHcp] = useState(false);
+  const [hcpValue, setHcpValue] = useState(String(participant.frozenHandicap ?? 0));
+  const [isSavingHcp, setIsSavingHcp] = useState(false);
+  const [hcpError, setHcpError] = useState<string | null>(null);
+
   function handleChange(next: (typeof STATUS_OPTIONS)[number]) {
     if (next === status) return;
     setError(null);
@@ -42,6 +51,28 @@ export function ParticipantStatusRow({
         setStatus(previous);
         setError(result.error);
       }
+    });
+  }
+
+  function handleSaveHcp() {
+    const parsed = Number(hcpValue);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 54) {
+      setHcpError("Enter a whole number between 0 and 54.");
+      return;
+    }
+    setHcpError(null);
+    setIsSavingHcp(true);
+    startTransition(async () => {
+      const result = await updateFrozenHandicapAction({
+        championshipPlayerId: participant.championshipPlayerId,
+        frozenHandicap: parsed,
+      });
+      setIsSavingHcp(false);
+      if (!result.ok) {
+        setHcpError(result.error);
+        return;
+      }
+      setIsEditingHcp(false);
     });
   }
 
@@ -84,6 +115,53 @@ export function ParticipantStatusRow({
       </div>
 
       {error && <p className="mt-2 text-xs font-medium text-destructive">{error}</p>}
+
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-foreground/10 pt-3">
+        <p className="text-xs font-medium text-muted-foreground">Starting HCP</p>
+        {isEditingHcp ? (
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              value={hcpValue}
+              onChange={(e) => setHcpValue(e.target.value)}
+              className="h-8 w-16 text-xs"
+              disabled={isSavingHcp}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={isSavingHcp}
+              onClick={handleSaveHcp}
+              className="h-8 rounded-lg px-2 text-xs"
+            >
+              {isSavingHcp ? "…" : "Save"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isSavingHcp}
+              onClick={() => {
+                setHcpValue(String(participant.frozenHandicap ?? 0));
+                setHcpError(null);
+                setIsEditingHcp(false);
+              }}
+              className="h-8 rounded-lg px-2 text-xs"
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsEditingHcp(true)}
+            className="text-sm font-semibold text-foreground underline decoration-dotted underline-offset-2 hover:text-emerald-800"
+          >
+            {participant.frozenHandicap ?? "—"}
+          </button>
+        )}
+      </div>
+      {hcpError && <p className="mt-1 text-xs font-medium text-destructive">{hcpError}</p>}
     </div>
   );
 }

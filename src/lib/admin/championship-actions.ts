@@ -267,6 +267,46 @@ export async function setParticipantStatusAction(params: {
 }
 
 /**
+ * Admin-only: manually overrides one participant's already-frozen
+ * starting handicap for this championship (`championship_players.frozenHandicap`).
+ *
+ * This exists ONLY for rare special-case corrections (e.g. a data-entry
+ * mistake at start time) — it does NOT recompute anything from live
+ * historical rounds, and it does NOT retroactively touch any
+ * already-submitted scorecards. Existing cumulativeNet/leaderboard/
+ * standings reads already compute `cumulativeNet` from whatever
+ * `frozenHandicap` currently holds (see round2to4-pairing-service.ts,
+ * leaderboard.ts, finalize.ts), so this correction takes effect the
+ * next time those are read — no separate rescoring step is needed.
+ */
+export async function updateFrozenHandicapAction(params: {
+  championshipPlayerId: string;
+  frozenHandicap: number;
+}): Promise<ParticipantActionResult> {
+  try {
+    await requireAdminMember();
+
+    if (!Number.isInteger(params.frozenHandicap) || params.frozenHandicap < 0 || params.frozenHandicap > 54) {
+      return { ok: false, error: "Enter a whole number between 0 and 54." };
+    }
+
+    await db
+      .update(championshipPlayers)
+      .set({ frozenHandicap: params.frozenHandicap })
+      .where(eq(championshipPlayers.id, params.championshipPlayerId));
+    revalidatePath("/admin/championship");
+    revalidatePath("/leaderboard");
+    revalidatePath("/pairings");
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not update starting handicap.",
+    };
+  }
+}
+
+/**
  * Admin-only: batch-saves tee times for already-existing groups within
  * one championship round, atomically. No group-membership/position
  * changes, no regeneration, no scorecard changes — all enforced by
