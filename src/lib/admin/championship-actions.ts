@@ -21,6 +21,7 @@ import {
 import { generateAndPersistRound1Pairing } from "@/lib/tournament/round1-pairing-service";
 import { startChampionshipWithRound1Pairing } from "@/lib/tournament/start-with-round1-pairing";
 import { setRoundGroupTeeTimes, type TeeTimeUpdate } from "@/lib/tournament/tee-times";
+import { updateRoundPairings, type PairingAssignment } from "@/lib/tournament/pairing-edit";
 
 export type CreateDraftChampionshipActionResult =
   | { ok: true; championshipId: string }
@@ -336,6 +337,41 @@ export async function saveTeeTimesAction(params: {
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Could not save tee times.",
+    };
+  }
+}
+
+export type UpdateRoundPairingsActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Admin-only: manually reassigns which group/cart/position each
+ * player in a round is in. No pairing-generation logic lives here —
+ * see updateRoundPairings for all validation/safety rules (refuses to
+ * edit once any group in the round has SUBMITTED, requires every
+ * player in the round to be included in one atomic replace).
+ */
+export async function updateRoundPairingsAction(params: {
+  championshipRoundId: string;
+  assignments: PairingAssignment[];
+}): Promise<UpdateRoundPairingsActionResult> {
+  try {
+    const current = await requireAdminMember();
+    await updateRoundPairings({
+      championshipRoundId: params.championshipRoundId,
+      actingMemberId: current.member.id,
+      assignments: params.assignments,
+    });
+    revalidatePath("/admin/championship");
+    revalidatePath("/pairings");
+    // Home ("/") and "/score" also render the current group's pairing
+    // (via getCurrentGroupForMember) — same reasoning as saveTeeTimesAction.
+    revalidatePath("/");
+    revalidatePath("/score");
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not save pairings.",
     };
   }
 }

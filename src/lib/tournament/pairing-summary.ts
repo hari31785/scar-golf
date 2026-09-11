@@ -24,6 +24,7 @@ export type PairingGroupRow = {
   roundGroupId: string;
   groupNumber: number;
   teeTime: string | null;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED";
   players: PairingPlayerRow[];
 };
 
@@ -41,6 +42,7 @@ export async function getRoundPairingSummary(
       id: roundGroups.id,
       groupNumber: roundGroups.groupNumber,
       teeTime: roundGroups.teeTime,
+      status: roundGroups.status,
     })
     .from(roundGroups)
     .where(eq(roundGroups.championshipRoundId, championshipRoundId))
@@ -86,6 +88,7 @@ export async function getRoundPairingSummary(
     roundGroupId: group.id,
     groupNumber: group.groupNumber,
     teeTime: group.teeTime ? group.teeTime.toISOString() : null,
+    status: group.status,
     players: playersByGroupId.get(group.id) ?? [],
   }));
 }
