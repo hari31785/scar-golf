@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText, Users, Trophy, Settings } from "lucide-react";
+import { FileText, ScrollText, Users, Trophy, Settings } from "lucide-react";
 
 const actions = [
   {
@@ -7,6 +7,12 @@ const actions = [
     description: "View standings",
     href: "/leaderboard",
     icon: FileText,
+  },
+  {
+    label: "Scorecards",
+    description: "Hole-by-hole scores",
+    href: "/scorecards",
+    icon: ScrollText,
   },
   {
     label: "Members",
@@ -30,7 +36,7 @@ const actions = [
 
 export function QuickActions() {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
       {actions.map(({ label, description, href, icon: Icon }) => (
         <Link
           key={label}

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Users, Trophy, ShieldCheck, BarChart3, HelpCircle, BookOpen, ScrollText, KeyRound } from "lucide-react";
+import { Users, Trophy, ShieldCheck, BarChart3, HelpCircle, BookOpen, ScrollText, KeyRound, FileText } from "lucide-react";
 import { getCurrentMember } from "@/lib/current-member";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { BottomNav } from "@/components/dashboard/bottom-nav";
@@ -17,6 +17,7 @@ export default async function MorePage() {
   const links = [
     { href: "/account", label: "Account & Security", description: "Manage your passkeys", icon: KeyRound },
     { href: "/pairings", label: "Pairings", description: "Tee times and groups for every round", icon: Users },
+    { href: "/scorecards", label: "Scorecards", description: "Hole-by-hole scores for every round", icon: FileText },
     { href: "/leaderboard", label: "Leaderboard", description: "Live championship standings", icon: Trophy },
     { href: "/handicaps", label: "Handicaps", description: "Current SCAR handicaps for every member", icon: BarChart3 },
     { href: "/rules", label: "Rules", description: "The current SCAR championship rules", icon: ScrollText },
