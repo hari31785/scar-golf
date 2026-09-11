@@ -254,3 +254,205 @@ export async function saveHoleScore(params: {
     return { holeScoreId };
   });
 }
+
+/**
+ * Saves/updates the gross scores for MULTIPLE players on a SINGLE hole
+ * in one transaction — the batched equivalent of calling
+ * `saveHoleScore` once per player, used by the score-entry UI's
+ * "save this hole when you leave it" flow so a whole hole's worth of
+ * scores (one per group member) commits as a single round-trip instead
+ * of one network call per player per stroke.
+ *
+ * Applies the EXACT SAME authorization rules as `saveHoleScore` for
+ * every entry (re-checked independently per player — a partially
+ * authorized batch still fails fast on the first invalid/unauthorized
+ * entry, and nothing in the batch is committed if any entry fails,
+ * since the whole batch runs in one transaction).
+ */
+export async function saveHoleScoresForGroup(params: {
+  championshipRoundId: string;
+  holeNumber: number;
+  actingMemberId: string;
+  scores: { championshipPlayerId: string; grossScore: number }[];
+}): Promise<{ holeScoreIds: string[] }> {
+  const { championshipRoundId, holeNumber, actingMemberId, scores } = params;
+
+  if (!isValidHoleNumber(holeNumber)) {
+    throw new ScoreAuthorizationError(
+      `Invalid hole number ${holeNumber} — must be between 1 and 18.`
+    );
+  }
+  for (const s of scores) {
+    if (!isValidGrossScore(s.grossScore)) {
+      throw new ScoreAuthorizationError(
+        `Invalid gross score ${s.grossScore} for hole ${holeNumber}.`
+      );
+    }
+  }
+
+  return db.transaction(async (tx) => {
+    const [round] = await tx
+      .select({
+        status: championshipRounds.status,
+        championshipId: championshipRounds.championshipId,
+      })
+      .from(championshipRounds)
+      .where(eq(championshipRounds.id, championshipRoundId))
+      .limit(1);
+    if (!round) {
+      throw new Error(`Championship round ${championshipRoundId} does not exist.`);
+    }
+    if (round.status === "COMPLETE") {
+      throw new ScoreAuthorizationError(
+        "Cannot save scores — this round is already COMPLETE."
+      );
+    }
+
+    const [championship] = await tx
+      .select({ status: championships.status })
+      .from(championships)
+      .where(eq(championships.id, round.championshipId))
+      .limit(1);
+    if (!championship || championship.status !== "ACTIVE") {
+      throw new ScoreAuthorizationError(
+        "Cannot save scores — championship is not ACTIVE."
+      );
+    }
+
+    const [actingMember] = await tx
+      .select({ appRole: members.appRole })
+      .from(members)
+      .where(eq(members.id, actingMemberId))
+      .limit(1);
+    if (!actingMember) {
+      throw new Error(`Member ${actingMemberId} does not exist.`);
+    }
+    const isAdmin = actingMember.appRole === "ADMIN";
+
+    let actingParticipantId: string | null = null;
+    if (!isAdmin) {
+      const [actingParticipant] = await tx
+        .select({
+          id: championshipPlayers.id,
+          participantStatus: championshipPlayers.participantStatus,
+        })
+        .from(championshipPlayers)
+        .where(
+          and(
+            eq(championshipPlayers.championshipId, round.championshipId),
+            eq(championshipPlayers.memberId, actingMemberId)
+          )
+        )
+        .limit(1);
+      if (!actingParticipant || actingParticipant.participantStatus !== "ACTIVE") {
+        throw new ScoreAuthorizationError(
+          "Acting member is not an active participant in this championship."
+        );
+      }
+      actingParticipantId = actingParticipant.id;
+    }
+
+    const holeScoreIds: string[] = [];
+
+    for (const entry of scores) {
+      const targetGroupMembership = await findGroupMembership(
+        tx,
+        championshipRoundId,
+        entry.championshipPlayerId
+      );
+      if (!targetGroupMembership) {
+        throw new ScoreAuthorizationError(
+          "Target player is not assigned to any group for this round."
+        );
+      }
+
+      const [targetPlayer] = await tx
+        .select({
+          id: championshipPlayers.id,
+          participantStatus: championshipPlayers.participantStatus,
+        })
+        .from(championshipPlayers)
+        .where(eq(championshipPlayers.id, entry.championshipPlayerId))
+        .limit(1);
+      if (!targetPlayer) {
+        throw new Error(
+          `Championship player ${entry.championshipPlayerId} does not exist.`
+        );
+      }
+      if (targetPlayer.participantStatus !== "ACTIVE") {
+        throw new ScoreAuthorizationError(
+          `Cannot save a score — target participant status is ${targetPlayer.participantStatus}, not ACTIVE.`
+        );
+      }
+
+      if (isAdmin) {
+        if (targetGroupMembership.groupStatus === "SUBMITTED") {
+          throw new ScoreAuthorizationError(
+            "This group has already submitted — use the admin correction path instead."
+          );
+        }
+      } else {
+        const actingGroupMembership = await findGroupMembership(
+          tx,
+          championshipRoundId,
+          actingParticipantId!
+        );
+        if (
+          !actingGroupMembership ||
+          actingGroupMembership.roundGroupId !== targetGroupMembership.roundGroupId
+        ) {
+          throw new ScoreAuthorizationError(
+            "Acting member does not belong to the same group as the target player for this round."
+          );
+        }
+        if (targetGroupMembership.groupStatus === "SUBMITTED") {
+          throw new ScoreAuthorizationError(
+            "Cannot edit — this group's scorecard has already been submitted."
+          );
+        }
+      }
+
+      const [existing] = await tx
+        .select({ id: holeScores.id })
+        .from(holeScores)
+        .where(
+          and(
+            eq(holeScores.championshipRoundId, championshipRoundId),
+            eq(holeScores.championshipPlayerId, entry.championshipPlayerId),
+            eq(holeScores.holeNumber, holeNumber)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        await tx
+          .update(holeScores)
+          .set({ grossScore: entry.grossScore, updatedAt: new Date() })
+          .where(eq(holeScores.id, existing.id));
+        holeScoreIds.push(existing.id);
+      } else {
+        const [inserted] = await tx
+          .insert(holeScores)
+          .values({
+            championshipRoundId,
+            championshipPlayerId: entry.championshipPlayerId,
+            roundGroupId: targetGroupMembership.roundGroupId,
+            holeNumber,
+            grossScore: entry.grossScore,
+            createdByMemberId: actingMemberId,
+          })
+          .returning({ id: holeScores.id });
+        holeScoreIds.push(inserted.id);
+      }
+    }
+
+    if (round.status === "NOT_STARTED") {
+      await tx
+        .update(championshipRounds)
+        .set({ status: "IN_PROGRESS", updatedAt: new Date() })
+        .where(eq(championshipRounds.id, championshipRoundId));
+    }
+
+    return { holeScoreIds };
+  });
+}

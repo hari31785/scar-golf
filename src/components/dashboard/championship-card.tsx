@@ -76,6 +76,7 @@ export function ChampionshipCard({
 
         <Button
           render={<a href="/score" />}
+          nativeButton={false}
           className="mt-4 h-12 w-full justify-between rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-md hover:bg-emerald-500"
         >
           Enter Scores

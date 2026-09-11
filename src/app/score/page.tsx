@@ -131,6 +131,7 @@ export default async function ScorePage() {
 
                 <Button
                   render={<a href="/score/enter" />}
+                  nativeButton={false}
                   className="mt-4 h-12 w-full justify-between rounded-xl bg-emerald-400 px-4 text-sm font-semibold text-emerald-950 hover:bg-emerald-300"
                 >
                   Enter Scores

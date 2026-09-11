@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentMember } from "@/lib/current-member";
-import { saveHoleScore, ScoreAuthorizationError } from "@/lib/tournament/scoring/hole-score";
+import {
+  saveHoleScore,
+  saveHoleScoresForGroup,
+  ScoreAuthorizationError,
+} from "@/lib/tournament/scoring/hole-score";
 import { submitRoundGroup, GroupSubmissionError } from "@/lib/tournament/scoring/submit-group";
 
 export type SaveHoleScoreResult =
@@ -76,5 +80,43 @@ export async function submitRoundGroupAction(params: {
       return { ok: false, error: err.message };
     }
     return { ok: false, error: "Could not submit round. Please try again." };
+  }
+}
+
+export type SaveHoleScoresForGroupResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Server action wrapping `saveHoleScoresForGroup` — batch-saves every
+ * group member's gross score for ONE hole in a single call. Used by
+ * the score-entry UI's "save on leaving the hole" flow so a whole
+ * hole's worth of scores commits as one round-trip instead of one
+ * network call per player per stroke. No new authorization logic here
+ * — every rule is enforced by saveHoleScoresForGroup itself.
+ */
+export async function saveHoleScoresForGroupAction(params: {
+  championshipRoundId: string;
+  holeNumber: number;
+  scores: { championshipPlayerId: string; grossScore: number }[];
+}): Promise<SaveHoleScoresForGroupResult> {
+  const current = await getCurrentMember();
+  if (!current) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  try {
+    await saveHoleScoresForGroup({
+      championshipRoundId: params.championshipRoundId,
+      holeNumber: params.holeNumber,
+      scores: params.scores,
+      actingMemberId: current.member.id,
+    });
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ScoreAuthorizationError) {
+      return { ok: false, error: err.message };
+    }
+    return { ok: false, error: "Could not save this hole. Please try again." };
   }
 }
