@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { ChampionshipRoundPairings } from "@/lib/tournament/pairing-summary";
 import { TeeTimeEditor } from "@/components/admin/tee-time-editor";
 import { PairingsEditor } from "@/components/admin/pairings-editor";
+import { RoundParticipationSection } from "@/components/admin/round-participation-section";
 
 /** ADMIN-only pairings + tee-time management — does not generate/regenerate groups. */
 export function PairingsSection({ rounds }: { rounds: ChampionshipRoundPairings[] }) {
@@ -33,6 +34,7 @@ export function PairingsSection({ rounds }: { rounds: ChampionshipRoundPairings[
             <div className="flex flex-col gap-4">
               <TeeTimeEditor round={round} />
               {round.groups.length > 0 && <PairingsEditor round={round} />}
+              {round.groups.length > 0 && <RoundParticipationSection round={round} />}
             </div>
           </TabsContent>
         ))}

@@ -22,6 +22,7 @@ import { generateAndPersistRound1Pairing } from "@/lib/tournament/round1-pairing
 import { startChampionshipWithRound1Pairing } from "@/lib/tournament/start-with-round1-pairing";
 import { setRoundGroupTeeTimes, type TeeTimeUpdate } from "@/lib/tournament/tee-times";
 import { updateRoundPairings, type PairingAssignment } from "@/lib/tournament/pairing-edit";
+import { setPlayerRoundSkip } from "@/lib/tournament/scoring/round-skip";
 
 export type CreateDraftChampionshipActionResult =
   | { ok: true; championshipId: string }
@@ -372,6 +373,43 @@ export async function updateRoundPairingsAction(params: {
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Could not save pairings.",
+    };
+  }
+}
+
+export type SetPlayerRoundSkipActionResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Admin-only: marks (or un-marks) one player as skipping ONE specific
+ * round — e.g. played Round 1, sits out Round 2, returns for Round 3 —
+ * without touching their overall championship-wide participantStatus
+ * (that's the separate ACTIVE/WITHDRAWN/DISQUALIFIED control). See
+ * setPlayerRoundSkip for the full rules (refuses once that player's
+ * group has already submitted for this round).
+ */
+export async function setPlayerRoundSkipAction(params: {
+  championshipRoundId: string;
+  championshipPlayerId: string;
+  skipped: boolean;
+}): Promise<SetPlayerRoundSkipActionResult> {
+  try {
+    const current = await requireAdminMember();
+    await setPlayerRoundSkip({
+      championshipRoundId: params.championshipRoundId,
+      championshipPlayerId: params.championshipPlayerId,
+      skipped: params.skipped,
+      actingMemberId: current.member.id,
+    });
+    revalidatePath("/admin/championship");
+    revalidatePath("/pairings");
+    revalidatePath("/");
+    revalidatePath("/score");
+    revalidatePath("/score/enter");
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not update skip status.",
     };
   }
 }

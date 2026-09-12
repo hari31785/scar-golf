@@ -21,6 +21,8 @@ export type CurrentGroupPlayer = {
   displayName: string;
   frozenHandicap: number | null;
   participantStatus: "ACTIVE" | "WITHDRAWN" | "DISQUALIFIED";
+  /** True if this player has been marked as skipping THIS round only. */
+  skippedRound: boolean;
   isSelf: boolean;
 };
 
@@ -174,6 +176,7 @@ export async function getCurrentGroupForMember(memberId: string): Promise<Curren
       displayName: members.displayName,
       frozenHandicap: championshipPlayers.frozenHandicap,
       participantStatus: championshipPlayers.participantStatus,
+      skippedRound: roundGroupPlayers.skippedRound,
     })
     .from(roundGroupPlayers)
     .innerJoin(
@@ -236,6 +239,7 @@ export async function getCurrentGroupForMember(memberId: string): Promise<Curren
       displayName: p.displayName,
       frozenHandicap: p.frozenHandicap,
       participantStatus: p.participantStatus,
+      skippedRound: p.skippedRound,
       isSelf: p.memberId === memberId,
     })),
     scores,

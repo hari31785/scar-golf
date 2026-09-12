@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Lock, Minus, Plus, TriangleAlert } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Lock, Minus, Plus, TriangleAlert, UserX, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,7 +17,7 @@ import {
 import { cn } from "cn";
 import type { CurrentGroupResult, HoleScoresByHole } from "@/lib/tournament/current-group";
 import { evaluateScorecardCompleteness } from "@/lib/tournament/scoring/completeness";
-import { saveHoleScoresForGroupAction, submitRoundGroupAction } from "./actions";
+import { saveHoleScoresForGroupAction, submitRoundGroupAction, setPlayerRoundSkipAction } from "./actions";
 
 type FoundResult = Extract<CurrentGroupResult, { state: "found" }>;
 
@@ -37,14 +37,46 @@ export function ScoreEntryClient({
   const isReadOnly = initialData.groupStatus === "SUBMITTED";
   const router = useRouter();
 
+  const [skippedRoundIds, setSkippedRoundIds] = useState<Set<string>>(
+    () => new Set(initialData.players.filter((p) => p.skippedRound).map((p) => p.championshipPlayerId))
+  );
+  const [skipPendingId, setSkipPendingId] = useState<string | null>(null);
+  const [skipError, setSkipError] = useState<string | null>(null);
+
+  function toggleRoundSkip(championshipPlayerId: string, nextSkipped: boolean) {
+    setSkipError(null);
+    setSkipPendingId(championshipPlayerId);
+    startTransition(async () => {
+      const result = await setPlayerRoundSkipAction({
+        championshipRoundId: initialData.championshipRoundId,
+        championshipPlayerId,
+        skipped: nextSkipped,
+      });
+      setSkipPendingId(null);
+      if (!result.ok) {
+        setSkipError(result.error);
+        return;
+      }
+      setSkippedRoundIds((prev) => {
+        const next = new Set(prev);
+        if (nextSkipped) next.add(championshipPlayerId);
+        else next.delete(championshipPlayerId);
+        return next;
+      });
+      router.refresh();
+    });
+  }
+
   const editablePlayerIds = useMemo(
     () =>
       new Set(
         initialData.players
-          .filter((p) => p.participantStatus === "ACTIVE")
+          .filter(
+            (p) => p.participantStatus === "ACTIVE" && !skippedRoundIds.has(p.championshipPlayerId)
+          )
           .map((p) => p.championshipPlayerId)
       ),
-    [initialData.players]
+    [initialData.players, skippedRoundIds]
   );
 
   const parByHole = useMemo(
@@ -186,8 +218,11 @@ export function ScoreEntryClient({
 
   // Per-ACTIVE-player completeness, reusing the same pure rule the
   // backend uses (exactly holes 1-18, each with a valid gross score).
-  // WITHDRAWN/DISQUALIFIED players never block submission.
-  const activePlayers = initialData.players.filter((p) => p.participantStatus === "ACTIVE");
+  // WITHDRAWN/DISQUALIFIED players, and anyone skipping THIS round,
+  // never block submission.
+  const activePlayers = initialData.players.filter(
+    (p) => p.participantStatus === "ACTIVE" && !skippedRoundIds.has(p.championshipPlayerId)
+  );
   const playerCompleteness = useMemo(() => {
     return activePlayers.map((player) => {
       const entries = Object.entries(scores).flatMap(([holeNumber, byPlayer]) => {
@@ -373,8 +408,10 @@ export function ScoreEntryClient({
       {/* Player score rows for the current hole */}
       <div className="flex flex-col gap-3 px-5 py-5">
         {initialData.players.map((player) => {
+          const isSkippedRound = skippedRoundIds.has(player.championshipPlayerId);
           const isEditable = !isReadOnly && editablePlayerIds.has(player.championshipPlayerId);
           const value = getValue(currentHole, player.championshipPlayerId);
+          const canToggleSkip = !isReadOnly && player.participantStatus === "ACTIVE";
 
           return (
             <div
@@ -402,11 +439,17 @@ export function ScoreEntryClient({
                           {player.participantStatus}
                         </Badge>
                       </span>
+                    ) : isSkippedRound ? (
+                      <span className="ml-2">
+                        <Badge variant="outline" className="align-middle">
+                          Skipped this round
+                        </Badge>
+                      </span>
                     ) : null}
                   </p>
                   {(() => {
                     const running = runningTotals[player.championshipPlayerId];
-                    if (!running) return null;
+                    if (!running || isSkippedRound) return null;
                     const sign = running.toPar > 0 ? "+" : running.toPar < 0 ? "" : "E";
                     return (
                       <p className="mt-0.5 text-xs font-semibold text-emerald-800">
@@ -417,36 +460,71 @@ export function ScoreEntryClient({
                   })()}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label={`Decrease score for ${player.displayName}`}
-                    disabled={!isEditable || value === null}
-                    onClick={() => adjust(player.championshipPlayerId, -1)}
-                    className="flex size-11 items-center justify-center rounded-xl bg-emerald-900/10 text-emerald-900 disabled:opacity-30"
-                  >
-                    <Minus className="size-5" />
-                  </button>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label={`Decrease score for ${player.displayName}`}
+                      disabled={!isEditable || value === null}
+                      onClick={() => adjust(player.championshipPlayerId, -1)}
+                      className="flex size-11 items-center justify-center rounded-xl bg-emerald-900/10 text-emerald-900 disabled:opacity-30"
+                    >
+                      <Minus className="size-5" />
+                    </button>
 
-                  <div className="flex w-12 items-center justify-center rounded-xl bg-emerald-950 py-2 text-lg font-bold tabular-nums text-white">
-                    {value === null ? "—" : value}
+                    <div className="flex w-12 items-center justify-center rounded-xl bg-emerald-950 py-2 text-lg font-bold tabular-nums text-white">
+                      {isSkippedRound ? "–" : value === null ? "—" : value}
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-label={`Increase score for ${player.displayName}`}
+                      disabled={!isEditable}
+                      onClick={() => adjust(player.championshipPlayerId, 1)}
+                      className="flex size-11 items-center justify-center rounded-xl bg-emerald-900/10 text-emerald-900 disabled:opacity-30"
+                    >
+                      <Plus className="size-5" />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    aria-label={`Increase score for ${player.displayName}`}
-                    disabled={!isEditable}
-                    onClick={() => adjust(player.championshipPlayerId, 1)}
-                    className="flex size-11 items-center justify-center rounded-xl bg-emerald-900/10 text-emerald-900 disabled:opacity-30"
-                  >
-                    <Plus className="size-5" />
-                  </button>
+                  {canToggleSkip && (
+                    <button
+                      type="button"
+                      disabled={skipPendingId === player.championshipPlayerId}
+                      onClick={() =>
+                        toggleRoundSkip(player.championshipPlayerId, !isSkippedRound)
+                      }
+                      className={cn(
+                        "flex items-center gap-1 rounded-lg px-2 py-1 text-[0.65rem] font-semibold disabled:opacity-50",
+                        isSkippedRound
+                          ? "bg-emerald-900/10 text-emerald-800"
+                          : "bg-destructive/10 text-destructive"
+                      )}
+                    >
+                      {isSkippedRound ? (
+                        <>
+                          <UserCheck className="size-3" /> Include
+                        </>
+                      ) : (
+                        <>
+                          <UserX className="size-3" /> Skip round
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {skipError && (
+        <div className="mx-5 -mt-3 mb-3 flex items-start gap-2 rounded-xl bg-destructive/10 px-4 py-3 text-destructive">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+          <p className="text-sm font-medium">{skipError}</p>
+        </div>
+      )}
 
       {/* Review + Confirm & Submit Round */}
       {!isReadOnly && (

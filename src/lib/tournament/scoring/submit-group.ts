@@ -115,6 +115,7 @@ export async function submitRoundGroup(params: {
         championshipPlayerId: roundGroupPlayers.championshipPlayerId,
         memberId: championshipPlayers.memberId,
         participantStatus: championshipPlayers.participantStatus,
+        skippedRound: roundGroupPlayers.skippedRound,
       })
       .from(roundGroupPlayers)
       .innerJoin(
@@ -135,7 +136,7 @@ export async function submitRoundGroup(params: {
     }
 
     const activePlayers = groupPlayers.filter(
-      (p) => p.participantStatus === "ACTIVE"
+      (p) => p.participantStatus === "ACTIVE" && !p.skippedRound
     );
 
     // Load all hole scores for these active players in this round in one
@@ -230,6 +231,26 @@ export async function submitRoundGroup(params: {
       .from(championshipPlayers)
       .where(eq(championshipPlayers.championshipId, round.championshipId));
 
+    // Players who've been marked as skipping THIS round specifically
+    // (independent of their championship-wide participantStatus) must
+    // not block round completion either — exclude them here exactly
+    // like WITHDRAWN/DISQUALIFIED players are already excluded.
+    const roundSkipRows = await tx
+      .select({ championshipPlayerId: roundGroupPlayers.championshipPlayerId })
+      .from(roundGroupPlayers)
+      .where(
+        and(
+          eq(roundGroupPlayers.championshipRoundId, round.id),
+          eq(roundGroupPlayers.skippedRound, true)
+        )
+      );
+    const skippedThisRoundIds = new Set(
+      roundSkipRows.map((r) => r.championshipPlayerId)
+    );
+    const completionParticipants = allParticipants.filter(
+      (p) => !skippedThisRoundIds.has(p.championshipPlayerId)
+    );
+
     const allSubmissions = await tx
       .select({ championshipPlayerId: scorecardSubmissions.championshipPlayerId })
       .from(scorecardSubmissions)
@@ -238,7 +259,7 @@ export async function submitRoundGroup(params: {
       allSubmissions.map((s) => s.championshipPlayerId)
     );
 
-    const completion = evaluateRoundCompletion(allParticipants, (id) =>
+    const completion = evaluateRoundCompletion(completionParticipants, (id) =>
       submittedIds.has(id)
     );
 

@@ -18,6 +18,8 @@ export type PairingPlayerRow = {
   position: number;
   /** Null for groups generated before cart assignment existed. */
   cartNumber: number | null;
+  /** True if this player has been marked as skipping THIS round only. */
+  skippedRound: boolean;
 };
 
 export type PairingGroupRow = {
@@ -54,6 +56,7 @@ export async function getRoundPairingSummary(
       roundGroupId: roundGroupPlayers.roundGroupId,
       position: roundGroupPlayers.position,
       cartNumber: roundGroupPlayers.cartNumber,
+      skippedRound: roundGroupPlayers.skippedRound,
       championshipPlayerId: championshipPlayers.id,
       memberId: members.id,
       displayName: members.displayName,
@@ -80,6 +83,7 @@ export async function getRoundPairingSummary(
       membershipType: row.membershipType,
       position: row.position,
       cartNumber: row.cartNumber,
+      skippedRound: row.skippedRound,
     });
     playersByGroupId.set(row.roundGroupId, list);
   }

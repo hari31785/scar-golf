@@ -8,6 +8,7 @@ import {
   ScoreAuthorizationError,
 } from "@/lib/tournament/scoring/hole-score";
 import { submitRoundGroup, GroupSubmissionError } from "@/lib/tournament/scoring/submit-group";
+import { setPlayerRoundSkip, RoundSkipError } from "@/lib/tournament/scoring/round-skip";
 
 export type SaveHoleScoreResult =
   | { ok: true }
@@ -118,5 +119,45 @@ export async function saveHoleScoresForGroupAction(params: {
       return { ok: false, error: err.message };
     }
     return { ok: false, error: "Could not save this hole. Please try again." };
+  }
+}
+
+export type SetPlayerRoundSkipResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Server action wrapping `setPlayerRoundSkip` — marks (or un-marks) one
+ * player as skipping THIS round only (e.g. played Round 1, skips Round
+ * 2, returns for Round 3), so their group can submit without a
+ * scorecard for them. No new authorization logic here — every rule
+ * (same group or admin, group not already submitted) is enforced by
+ * setPlayerRoundSkip itself.
+ */
+export async function setPlayerRoundSkipAction(params: {
+  championshipRoundId: string;
+  championshipPlayerId: string;
+  skipped: boolean;
+}): Promise<SetPlayerRoundSkipResult> {
+  const current = await getCurrentMember();
+  if (!current) {
+    return { ok: false, error: "Not signed in." };
+  }
+
+  try {
+    await setPlayerRoundSkip({
+      championshipRoundId: params.championshipRoundId,
+      championshipPlayerId: params.championshipPlayerId,
+      skipped: params.skipped,
+      actingMemberId: current.member.id,
+    });
+    revalidatePath("/score/enter");
+    revalidatePath("/score");
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof RoundSkipError) {
+      return { ok: false, error: err.message };
+    }
+    return { ok: false, error: "Could not update skip status. Please try again." };
   }
 }

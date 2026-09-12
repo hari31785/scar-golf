@@ -1,7 +1,8 @@
-import { integer, pgTable, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { roundGroups } from "./round-groups";
 import { championshipRounds } from "./championship-rounds";
 import { championshipPlayers } from "./championship-players";
+import { members } from "./members";
 
 /**
  * Membership of one championship participant within one group, for one
@@ -49,6 +50,21 @@ export const roundGroupPlayers = pgTable(
     // concept existed) remain valid; the pairing service always sets
     // it for newly generated groups.
     cartNumber: integer("cart_number"),
+
+    // Per-ROUND exclusion, independent of the championship-wide
+    // participantStatus on championship_players. Lets a player compete
+    // in some rounds and sit out (be "DQ'd"/skipped) for others — e.g.
+    // played Round 1, skipped Round 2, returns for Round 3 — without
+    // ever touching their overall ACTIVE/WITHDRAWN/DISQUALIFIED status.
+    // When true, this player is excluded from this round's completion
+    // requirement (see round-completion usage in submit-group.ts) and
+    // their scoring inputs are disabled on the score-entry screen.
+    skippedRound: boolean("skipped_round").notNull().default(false),
+    skippedRoundAt: timestamp("skipped_round_at", { withTimezone: true }),
+    skippedRoundByMemberId: uuid("skipped_round_by_member_id").references(
+      () => members.id,
+      { onDelete: "set null" }
+    ),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
