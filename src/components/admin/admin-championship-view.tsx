@@ -101,7 +101,7 @@ export function AdminChampionshipView({
           <>
             <ChampionshipSummaryCard championship={championship} />
 
-            {rounds.length > 0 && <RoundSetupSection rounds={rounds} isDraft={isDraft} />}
+            {rounds.length > 0 && <RoundSetupSection rounds={rounds} />}
 
             {isDraft && round1NeedsPairing && (
               <GeneratePairingsSection championshipRoundId={round1NeedsPairing} />

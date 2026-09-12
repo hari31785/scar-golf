@@ -155,7 +155,7 @@ export function validateHoleSetup(
   return problems;
 }
 
-async function assertChampionshipIsDraft(championshipRoundId: string) {
+async function assertRoundExists(championshipRoundId: string) {
   const [round] = await db
     .select({
       championshipId: championshipRounds.championshipId,
@@ -175,17 +175,21 @@ async function assertChampionshipIsDraft(championshipRoundId: string) {
   if (!championship) {
     throw new Error(`Championship ${round.championshipId} does not exist.`);
   }
-  if (championship.status !== "DRAFT") {
-    throw new CourseSetupError(
-      "Course/tee and hole setup can only be changed while the championship is DRAFT — it is frozen once the championship becomes ACTIVE."
-    );
-  }
+  // NOTE: course/tee and hole setup are intentionally editable by
+  // admins at ANY championship status (DRAFT, ACTIVE, or COMPLETED) —
+  // this is a deliberate admin override so a mistake (wrong course
+  // name, par, rating/slope, etc.) can be corrected mid-tournament.
+  // Editing an already-scored round's par/holes retroactively affects
+  // how existing hole scores render relative-to-par and does NOT
+  // recompute any already-submitted scorecard/handicap math derived
+  // from the old values — use with care.
 }
 
 /**
  * Sets/updates a round's round-level course/tee metadata. ADMIN-only
  * (enforced by the caller — this function does not itself check
- * appRole). Only permitted while the parent championship is DRAFT.
+ * appRole). Editable regardless of championship status — see the
+ * note in assertRoundExists.
  */
 export async function setRoundCourseSetup(params: {
   championshipRoundId: string;
@@ -198,7 +202,7 @@ export async function setRoundCourseSetup(params: {
     throw new CourseSetupError(problems.join(" "));
   }
 
-  await assertChampionshipIsDraft(championshipRoundId);
+  await assertRoundExists(championshipRoundId);
 
   await db
     .update(championshipRounds)
@@ -218,9 +222,10 @@ export async function setRoundCourseSetup(params: {
 
 /**
  * Replaces a round's 18-hole layout (par + stroke index per hole).
- * ADMIN-only (enforced by the caller). Only permitted while the parent
- * championship is DRAFT. The round's current `par` (totalPar) is used
- * to validate the hole pars sum correctly — set course setup first.
+ * ADMIN-only (enforced by the caller). Editable regardless of
+ * championship status — see the note in assertRoundExists. The
+ * round's current `par` (totalPar) is used to validate the hole pars
+ * sum correctly — set course setup first.
  */
 export async function setRoundHoles(params: {
   championshipRoundId: string;
@@ -228,7 +233,7 @@ export async function setRoundHoles(params: {
 }): Promise<void> {
   const { championshipRoundId, holes } = params;
 
-  await assertChampionshipIsDraft(championshipRoundId);
+  await assertRoundExists(championshipRoundId);
 
   const [round] = await db
     .select({ par: championshipRounds.par })
@@ -354,8 +359,9 @@ export async function validateRoundIsReadyToStart(
  *    already have checked this, but this service re-checks
  *    independently, matching the pattern used by
  *    src/lib/tournament/scoring/submit-group.ts),
- *  - the championship round exists and its parent championship is
- *    DRAFT (via the existing `assertChampionshipIsDraft`),
+ *  - the championship round exists (editable at ANY championship
+ *    status — this is a deliberate admin override, see the note in
+ *    assertRoundExists),
  *  - the course/tee metadata is valid (`validateCourseSetup`),
  *  - the full 18-hole layout is valid against the given totalPar
  *    (`validateHoleSetup`) — no duplicated validation rules, both are
@@ -413,11 +419,8 @@ export async function setCompleteRoundSetup(params: {
     if (!championship) {
       throw new Error(`Championship ${round.championshipId} does not exist.`);
     }
-    if (championship.status !== "DRAFT") {
-      throw new CourseSetupError(
-        "Course/tee and hole setup can only be changed while the championship is DRAFT — it is frozen once the championship becomes ACTIVE."
-      );
-    }
+    // Editable at any championship status — a deliberate admin override
+    // (see the note in assertRoundExists above).
 
     await tx
       .update(championshipRounds)

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,10 +42,8 @@ function emptyHoles(): HoleSetupInput[] {
 
 export function RoundSetupSection({
   rounds,
-  isDraft,
 }: {
   rounds: RoundSetupSummary[];
-  isDraft: boolean;
 }) {
   const [activeRound, setActiveRound] = useState(String(rounds[0]?.roundNumber ?? 1));
 
@@ -56,12 +53,6 @@ export function RoundSetupSection({
         <h2 className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Round Setup
         </h2>
-        {!isDraft && (
-          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <Lock className="size-3" />
-            Frozen
-          </span>
-        )}
       </div>
 
       <Tabs value={activeRound} onValueChange={(v) => setActiveRound(String(v))}>
@@ -75,7 +66,7 @@ export function RoundSetupSection({
 
         {rounds.map((round) => (
           <TabsContent key={round.roundNumber} value={String(round.roundNumber)}>
-            <RoundSetupCard round={round} isDraft={isDraft} />
+            <RoundSetupCard round={round} />
           </TabsContent>
         ))}
       </Tabs>
@@ -85,10 +76,8 @@ export function RoundSetupSection({
 
 function RoundSetupCard({
   round,
-  isDraft,
 }: {
   round: RoundSetupSummary;
-  isDraft: boolean;
 }) {
   const [courseSetup, setCourseSetup] = useState<CourseSetupInput>(
     round.courseSetup ?? EMPTY_COURSE_SETUP
@@ -99,8 +88,6 @@ function RoundSetupCard({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  const readOnly = !isDraft;
 
   function updateHole(index: number, field: "par" | "strokeIndex", value: number) {
     setHoles((prev) =>
@@ -138,7 +125,6 @@ function RoundSetupCard({
           Course Name
           <Input
             value={courseSetup.courseName}
-            disabled={readOnly}
             onChange={(e) => setCourseSetup((s) => ({ ...s, courseName: e.target.value }))}
           />
         </label>
@@ -146,7 +132,6 @@ function RoundSetupCard({
           City
           <Input
             value={courseSetup.city ?? ""}
-            disabled={readOnly}
             onChange={(e) => setCourseSetup((s) => ({ ...s, city: e.target.value }))}
           />
         </label>
@@ -154,7 +139,6 @@ function RoundSetupCard({
           Tee Name
           <Input
             value={courseSetup.teeName}
-            disabled={readOnly}
             onChange={(e) => setCourseSetup((s) => ({ ...s, teeName: e.target.value }))}
           />
         </label>
@@ -162,7 +146,6 @@ function RoundSetupCard({
           Tee Color
           <Input
             value={courseSetup.teeColor}
-            disabled={readOnly}
             onChange={(e) => setCourseSetup((s) => ({ ...s, teeColor: e.target.value }))}
           />
         </label>
@@ -172,7 +155,6 @@ function RoundSetupCard({
             type="number"
             step="0.1"
             value={courseSetup.courseRating}
-            disabled={readOnly}
             onChange={(e) =>
               setCourseSetup((s) => ({ ...s, courseRating: Number(e.target.value) }))
             }
@@ -183,7 +165,6 @@ function RoundSetupCard({
           <Input
             type="number"
             value={courseSetup.slope}
-            disabled={readOnly}
             onChange={(e) => setCourseSetup((s) => ({ ...s, slope: Number(e.target.value) }))}
           />
         </label>
@@ -192,7 +173,6 @@ function RoundSetupCard({
           <Input
             type="number"
             value={courseSetup.totalPar}
-            disabled={readOnly}
             onChange={(e) =>
               setCourseSetup((s) => ({ ...s, totalPar: Number(e.target.value) }))
             }
@@ -203,7 +183,6 @@ function RoundSetupCard({
           <Input
             type="number"
             value={courseSetup.yardage}
-            disabled={readOnly}
             onChange={(e) =>
               setCourseSetup((s) => ({ ...s, yardage: Number(e.target.value) }))
             }
@@ -226,13 +205,11 @@ function RoundSetupCard({
               <Input
                 type="number"
                 value={hole.par}
-                disabled={readOnly}
                 onChange={(e) => updateHole(i, "par", Number(e.target.value))}
               />
               <Input
                 type="number"
                 value={hole.strokeIndex}
-                disabled={readOnly}
                 onChange={(e) => updateHole(i, "strokeIndex", Number(e.target.value))}
               />
             </div>
@@ -243,16 +220,14 @@ function RoundSetupCard({
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
       {success && <p className="text-xs font-medium text-emerald-700">Round setup saved.</p>}
 
-      {!readOnly && (
-        <Button
-          type="button"
-          disabled={isPending}
-          onClick={handleSave}
-          className="h-11 rounded-xl text-sm font-semibold"
-        >
-          {isPending ? "Saving…" : "Save Round Setup"}
-        </Button>
-      )}
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={handleSave}
+        className="h-11 rounded-xl text-sm font-semibold"
+      >
+        {isPending ? "Saving…" : "Save Round Setup"}
+      </Button>
     </div>
   );
 }
