@@ -35,9 +35,12 @@ export type LeaderboardEntry = {
  * WITHDRAWN/DISQUALIFIED participants never appear.
  *
  * Sort order:
- *   1. players with completedRounds > 0 come before players with
- *      completedRounds === 0 (so someone who hasn't played yet never
- *      outranks anyone who has, since a 0/0/0 line isn't a real score),
+ *   1. players "caught up" — completedRounds equal to the MAXIMUM
+ *      completedRounds across all rows — come before everyone else.
+ *      This keeps a player who is behind (a DQ'd/skipped round, or
+ *      simply hasn't submitted the latest round yet) from ever
+ *      outranking players who have completed more official rounds,
+ *      no matter how low their partial net score is.
  *   2. within each of those two buckets: lowest cumulativeNet first,
  *      then lowest cumulativeGross, then championshipPlayerId
  *      ascending (deterministic tiebreak with no ranking effect).
@@ -45,9 +48,9 @@ export type LeaderboardEntry = {
  * Position uses competition ranking ("1,1,3"): two players tie for the
  * same position only if BOTH cumulativeNet AND cumulativeGross are
  * identical; the next distinct score's position skips ahead by the
- * number of players tied ahead of it. Zero-round players are ranked
- * within their own bucket the same way (they will typically all tie at
- * whatever position their bucket starts at, since they all show 0/0).
+ * number of players tied ahead of it. The "behind" bucket continues the
+ * same position sequence after the last caught-up player (it is not
+ * restarted at 1).
  */
 
 /**
@@ -68,8 +71,10 @@ export type StandingsRow = {
  * Sorts and assigns competition-ranking ("1,1,3") positions to a set of
  * standings rows, using the SAME rules everywhere they matter for this
  * championship:
- *   1. players with completedRounds > 0 come before players with
- *      completedRounds === 0,
+ *   1. players "caught up" (completedRounds === the max completedRounds
+ *      across all rows) come before players who are behind — this
+ *      applies regardless of WHY a player is behind (DQ'd/skipped a
+ *      round, or simply hasn't submitted the latest round yet),
  *   2. within each of those two buckets: lowest cumulativeNet first,
  *      then lowest cumulativeGross, then championshipPlayerId ascending
  *      (deterministic tiebreak with no ranking effect),
@@ -81,10 +86,15 @@ export type StandingsRow = {
 export function rankStandings<T extends StandingsRow>(
   rows: T[]
 ): (T & { position: number })[] {
+  const maxCompletedRounds = rows.reduce(
+    (max, row) => Math.max(max, row.completedRounds),
+    0
+  );
+
   const sorted = [...rows].sort((a, b) => {
-    const aHasPlayed = a.completedRounds > 0;
-    const bHasPlayed = b.completedRounds > 0;
-    if (aHasPlayed !== bHasPlayed) return aHasPlayed ? -1 : 1;
+    const aCaughtUp = a.completedRounds === maxCompletedRounds;
+    const bCaughtUp = b.completedRounds === maxCompletedRounds;
+    if (aCaughtUp !== bCaughtUp) return aCaughtUp ? -1 : 1;
     if (a.cumulativeNet !== b.cumulativeNet) return a.cumulativeNet - b.cumulativeNet;
     if (a.cumulativeGross !== b.cumulativeGross) return a.cumulativeGross - b.cumulativeGross;
     return a.championshipPlayerId < b.championshipPlayerId

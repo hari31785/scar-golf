@@ -203,4 +203,47 @@ describe("getChampionshipLeaderboard", () => {
     expect(zeroEntry.cumulativeGross).toBe(0);
     expect(zeroEntry.cumulativeNet).toBe(0);
   });
+
+  it("a player behind on completed rounds never outranks players caught up to the max, even with a better net score", async () => {
+    const memberIds = [await makeMember(), await makeMember(), await makeMember()];
+    createdMemberIds.push(...memberIds);
+    const { championshipId, players } = await makeActiveChampionshipWithPlayers(memberIds);
+    createdChampionshipIds.push(championshipId);
+    const byMember = new Map(players.map((p) => [p.memberId, p]));
+
+    const rounds = await db
+      .select()
+      .from(championshipRounds)
+      .where(eq(championshipRounds.championshipId, championshipId));
+    const round1 = rounds.find((r) => r.roundNumber === 1)!;
+    const round2 = rounds.find((r) => r.roundNumber === 2)!;
+
+    // Behind: only Round 1 submitted (e.g. DQ'd/skipped Round 2), but a
+    // very low gross score that would otherwise look like the best net.
+    const behindPlayer = byMember.get(memberIds[0])!;
+    await insertSubmission({ roundId: round1.id, championshipPlayerId: behindPlayer.id, submittedByMemberId: memberIds[0], grossTotal: 60 });
+
+    // Caught up: both rounds submitted, higher (worse) total gross.
+    const caughtUpPlayerA = byMember.get(memberIds[1])!;
+    await insertSubmission({ roundId: round1.id, championshipPlayerId: caughtUpPlayerA.id, submittedByMemberId: memberIds[1], grossTotal: 90 });
+    await insertSubmission({ roundId: round2.id, championshipPlayerId: caughtUpPlayerA.id, submittedByMemberId: memberIds[1], grossTotal: 92 });
+
+    const caughtUpPlayerB = byMember.get(memberIds[2])!;
+    await insertSubmission({ roundId: round1.id, championshipPlayerId: caughtUpPlayerB.id, submittedByMemberId: memberIds[2], grossTotal: 95 });
+    await insertSubmission({ roundId: round2.id, championshipPlayerId: caughtUpPlayerB.id, submittedByMemberId: memberIds[2], grossTotal: 95 });
+
+    const leaderboard = await getChampionshipLeaderboard(championshipId);
+
+    // Both caught-up players (2 rounds) must rank ahead of the behind
+    // player (1 round), regardless of the behind player's lower net.
+    const behindEntry = leaderboard.find((e) => e.championshipPlayerId === behindPlayer.id)!;
+    const aEntry = leaderboard.find((e) => e.championshipPlayerId === caughtUpPlayerA.id)!;
+    const bEntry = leaderboard.find((e) => e.championshipPlayerId === caughtUpPlayerB.id)!;
+
+    expect(aEntry.position).toBeLessThan(behindEntry.position);
+    expect(bEntry.position).toBeLessThan(behindEntry.position);
+    expect(aEntry.position).toBeLessThan(bEntry.position);
+    expect(behindEntry.position).toBe(3);
+    expect(behindEntry.cumulativeNet).toBeLessThan(aEntry.cumulativeNet);
+  });
 });

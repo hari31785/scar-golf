@@ -27,24 +27,67 @@ function groupStatusLabel(status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED") {
 /**
  * Standard golf scorecard convention, relative to par: score is
  * wrapped in a shape as well as colored, so the meaning doesn't rely
- * on color alone (accessibility) — circle = birdie, double circle =
- * eagle-or-better, square = bogey, double square = double-bogey-or-
- * worse, plain = par.
+ * on color alone (accessibility) — 1 circle = birdie, 2 (concentric)
+ * circles = eagle-or-better, 1 square = bogey, 2 squares = double
+ * bogey, 3 squares = triple-bogey-or-worse, plain = par.
  */
-function scoreDisplayClass(relativeToPar: number): string {
+type ScoreMarkerSpec = {
+  shape: "circle" | "square";
+  rings: number;
+  borderClass: string;
+  textClass: string;
+};
+
+function scoreMarkerSpec(relativeToPar: number): ScoreMarkerSpec | null {
   if (relativeToPar <= -2) {
-    return "font-semibold text-blue-700 rounded-full ring-2 ring-inset ring-blue-700";
+    return { shape: "circle", rings: 2, borderClass: "border-blue-700", textClass: "font-semibold text-blue-700" };
   }
   if (relativeToPar === -1) {
-    return "font-semibold text-emerald-700 rounded-full ring-1 ring-inset ring-emerald-700";
+    return { shape: "circle", rings: 1, borderClass: "border-emerald-700", textClass: "font-semibold text-emerald-700" };
   }
   if (relativeToPar === 0) {
-    return "text-foreground";
+    return null;
   }
   if (relativeToPar === 1) {
-    return "font-semibold text-orange-500 rounded-[3px] ring-1 ring-inset ring-orange-500";
+    return { shape: "square", rings: 1, borderClass: "border-orange-500", textClass: "font-semibold text-orange-500" };
   }
-  return "font-semibold text-red-800 rounded-[3px] ring-2 ring-inset ring-red-800";
+  if (relativeToPar === 2) {
+    return { shape: "square", rings: 2, borderClass: "border-red-700", textClass: "font-semibold text-red-700" };
+  }
+  return { shape: "square", rings: 3, borderClass: "border-red-800", textClass: "font-semibold text-red-800" };
+}
+
+/** Renders a score wrapped in the given number of concentric circle/square rings. */
+function ScoreMarker({
+  score,
+  spec,
+  size = "size-5",
+}: {
+  score: string | number;
+  spec: ScoreMarkerSpec | null;
+  size?: string;
+}) {
+  const step = spec?.shape === "circle" ? 2.5 : 2;
+  return (
+    <span className={cn("relative mx-auto flex items-center justify-center", size)}>
+      {spec &&
+        Array.from({ length: spec.rings }).map((_, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute border",
+              spec.shape === "circle" ? "rounded-full" : "rounded-[2px]",
+              spec.borderClass
+            )}
+            style={{ inset: `${-(step * (i + 1))}px` }}
+          />
+        ))}
+      <span className={cn("relative z-10 tabular-nums", spec ? spec.textClass : "text-foreground")}>
+        {score}
+      </span>
+    </span>
+  );
 }
 
 export function ScorecardsClient({
@@ -67,34 +110,30 @@ export function ScorecardsClient({
         <p className="text-xs font-medium text-emerald-800/80">Scorecards</p>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-foreground/5 bg-card px-5 py-2 text-[0.65rem] text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="flex size-4 items-center justify-center rounded-full font-semibold text-blue-700 ring-2 ring-inset ring-blue-700">
-            2
-          </span>
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 border-b border-foreground/5 bg-card px-5 py-2 text-[0.65rem] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <ScoreMarker score={2} spec={scoreMarkerSpec(-2)} />
           Eagle+
         </span>
-        <span className="flex items-center gap-1">
-          <span className="flex size-4 items-center justify-center rounded-full font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-700">
-            3
-          </span>
+        <span className="flex items-center gap-1.5">
+          <ScoreMarker score={3} spec={scoreMarkerSpec(-1)} />
           Birdie
         </span>
-        <span className="flex items-center gap-1">
-          <span className="flex size-4 items-center justify-center text-foreground">4</span>
+        <span className="flex items-center gap-1.5">
+          <ScoreMarker score={4} spec={null} />
           Par
         </span>
-        <span className="flex items-center gap-1">
-          <span className="flex size-4 items-center justify-center rounded-[3px] font-semibold text-orange-500 ring-1 ring-inset ring-orange-500">
-            5
-          </span>
+        <span className="flex items-center gap-1.5">
+          <ScoreMarker score={5} spec={scoreMarkerSpec(1)} />
           Bogey
         </span>
-        <span className="flex items-center gap-1">
-          <span className="flex size-4 items-center justify-center rounded-[3px] font-semibold text-red-800 ring-2 ring-inset ring-red-800">
-            6
-          </span>
-          Double+
+        <span className="flex items-center gap-1.5">
+          <ScoreMarker score={6} spec={scoreMarkerSpec(2)} />
+          Double
+        </span>
+        <span className="flex items-center gap-1.5">
+          <ScoreMarker score={7} spec={scoreMarkerSpec(3)} />
+          Triple+
         </span>
       </div>
 
@@ -197,16 +236,10 @@ export function ScorecardsClient({
                                         score !== undefined ? score - h.par : null;
                                       return (
                                         <td key={h.holeNumber} className="py-1.5 text-center">
-                                          <span
-                                            className={cn(
-                                              "mx-auto flex size-5 items-center justify-center tabular-nums",
-                                              relativeToPar !== null
-                                                ? scoreDisplayClass(relativeToPar)
-                                                : "text-foreground"
-                                            )}
-                                          >
-                                            {score ?? "–"}
-                                          </span>
+                                          <ScoreMarker
+                                            score={score ?? "–"}
+                                            spec={relativeToPar !== null ? scoreMarkerSpec(relativeToPar) : null}
+                                          />
                                         </td>
                                       );
                                     })}
