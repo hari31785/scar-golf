@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ChampionshipRoundPairings } from "@/lib/tournament/pairing-summary";
@@ -34,6 +34,16 @@ export function TeeTimeEditor({ round }: { round: ChampionshipRoundPairings }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Re-sync local field values whenever fresh server data arrives (e.g.
+  // after a successful save triggers revalidation and this component
+  // re-renders with an updated `round` prop) — otherwise the inputs
+  // would keep showing whatever was in state from the initial mount,
+  // making a just-saved tee time appear to "revert" even though the
+  // database was updated correctly.
+  useEffect(() => {
+    setTeeTimes(initialTeeTimes);
+  }, [initialTeeTimes]);
 
   if (round.groups.length === 0) {
     return (
