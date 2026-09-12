@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ChampionshipRoundPairings } from "@/lib/tournament/pairing-summary";
@@ -22,13 +22,15 @@ function localInputValueToIso(value: string): string | null {
 }
 
 export function TeeTimeEditor({ round }: { round: ChampionshipRoundPairings }) {
-  const [teeTimes, setTeeTimes] = useState<Record<string, string>>(() => {
+  const initialTeeTimes = useMemo(() => {
     const initial: Record<string, string> = {};
     for (const group of round.groups) {
       initial[group.roundGroupId] = isoToLocalInputValue(group.teeTime);
     }
     return initial;
-  });
+  }, [round.groups]);
+
+  const [teeTimes, setTeeTimes] = useState<Record<string, string>>(initialTeeTimes);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -46,13 +48,43 @@ export function TeeTimeEditor({ round }: { round: ChampionshipRoundPairings }) {
   function handleSave() {
     setError(null);
     setSuccess(false);
+
+    // Only send updates for groups whose value actually changed since
+    // load — never silently overwrite an already-saved tee time with a
+    // blank value just because a field happened to render empty.
+    const changedUpdates = round.groups
+      .filter((group) => (teeTimes[group.roundGroupId] ?? "") !== (initialTeeTimes[group.roundGroupId] ?? ""))
+      .map((group) => ({
+        roundGroupId: group.roundGroupId,
+        teeTime: localInputValueToIso(teeTimes[group.roundGroupId] ?? ""),
+      }));
+
+    if (changedUpdates.length === 0) {
+      setSuccess(true);
+      return;
+    }
+
+    // Confirm before clearing any group's tee time that was previously
+    // set — this is the one destructive case (setting a NEW time never
+    // needs confirmation).
+    const clearingGroups = changedUpdates.filter(
+      (u) => u.teeTime === null && (initialTeeTimes[u.roundGroupId] ?? "") !== ""
+    );
+    if (clearingGroups.length > 0) {
+      const groupNumbers = clearingGroups
+        .map((u) => round.groups.find((g) => g.roundGroupId === u.roundGroupId)?.groupNumber)
+        .filter((n): n is number => n !== undefined)
+        .join(", ");
+      const confirmed = window.confirm(
+        `This will clear the tee time for Group ${groupNumbers} in Round ${round.roundNumber}. Continue?`
+      );
+      if (!confirmed) return;
+    }
+
     startTransition(async () => {
       const result = await saveTeeTimesAction({
         championshipRoundId: round.championshipRoundId,
-        updates: round.groups.map((group) => ({
-          roundGroupId: group.roundGroupId,
-          teeTime: localInputValueToIso(teeTimes[group.roundGroupId] ?? ""),
-        })),
+        updates: changedUpdates,
       });
       if (!result.ok) {
         setError(result.error);
