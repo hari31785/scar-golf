@@ -11,7 +11,6 @@ import {
   scorecardSubmissions,
 } from "@/db/schema";
 import { generateNetStandingsPairing, assignCarts, type NetStandingsParticipant } from "./pairing";
-
 export class Round2to4PairingError extends Error {}
 
 /** One participant's cumulative-net standing at the moment pairings were generated. */
@@ -164,16 +163,54 @@ export async function generateAndPersistRound2to4Pairing(params: {
       submissionsByPlayer.set(sub.championshipPlayerId, list);
     }
 
+    // A player who was marked as skipping (per-round DQ'd from) one of
+    // the prior rounds never has — and never will have — a submitted
+    // scorecard for that specific round. That round must NOT be
+    // required from them when computing standings/eligibility for this
+    // pairing generation, exactly like the read-only leaderboard and
+    // submit-group's round-completion check already treat a skipped
+    // round as a non-blocking absence (see roundGroupPlayers.skippedRound).
+    const skippedRows =
+      priorRoundIds.length > 0 && activePlayerIds.length > 0
+        ? await tx
+            .select({
+              championshipRoundId: roundGroupPlayers.championshipRoundId,
+              championshipPlayerId: roundGroupPlayers.championshipPlayerId,
+            })
+            .from(roundGroupPlayers)
+            .where(
+              and(
+                inArray(roundGroupPlayers.championshipRoundId, priorRoundIds),
+                inArray(roundGroupPlayers.championshipPlayerId, activePlayerIds),
+                eq(roundGroupPlayers.skippedRound, true)
+              )
+            )
+        : [];
+    const skippedRoundIdsByPlayer = new Map<string, Set<string>>();
+    for (const row of skippedRows) {
+      const set = skippedRoundIdsByPlayer.get(row.championshipPlayerId) ?? new Set<string>();
+      set.add(row.championshipRoundId);
+      skippedRoundIdsByPlayer.set(row.championshipPlayerId, set);
+    }
+
     const standings: StandingsEntry[] = [];
     for (const player of activePlayers) {
       const playerSubmissions = submissionsByPlayer.get(player.id) ?? [];
-      if (playerSubmissions.length !== priorRoundIds.length) {
+      const playerSkippedRoundIds = skippedRoundIdsByPlayer.get(player.id) ?? new Set<string>();
+      const requiredRoundIds = priorRoundIds.filter((id) => !playerSkippedRoundIds.has(id));
+
+      const submittedRoundIds = new Set(playerSubmissions.map((s) => s.championshipRoundId));
+      const stillMissing = requiredRoundIds.some((id) => !submittedRoundIds.has(id));
+      if (stillMissing) {
         throw new Round2to4PairingError(
           `Active participant ${player.id} is missing a submitted scorecard for at least one prior round — cannot compute standings.`
         );
       }
-      const cumulativeGross = playerSubmissions.reduce((sum, s) => sum + s.grossTotal, 0);
-      const completedRounds = playerSubmissions.length;
+      const countedSubmissions = playerSubmissions.filter((s) =>
+        requiredRoundIds.includes(s.championshipRoundId)
+      );
+      const cumulativeGross = countedSubmissions.reduce((sum, s) => sum + s.grossTotal, 0);
+      const completedRounds = countedSubmissions.length;
       const frozenHandicap = player.frozenHandicap!;
       const cumulativeNet = cumulativeGross - frozenHandicap * completedRounds;
       standings.push({
